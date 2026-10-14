@@ -15,7 +15,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   classNameTitle,
   onClose,
 }) => {
-  const { loadDataset } = useLabStore()
+  const { loadDataset, theme } = useLabStore()
   if (!image) return null
 
   const handleDelete = async () => {
@@ -32,65 +32,123 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-[#0c1019] border border-white/10 p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+      <div
+        className={`w-full max-w-lg rounded-2xl border p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 transition-colors ${
+          theme === 'light'
+            ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/50'
+            : 'bg-[#0c1019] border-white/10 text-slate-100 shadow-cyan-950/40'
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between border-b pb-3 ${
+            theme === 'light' ? 'border-slate-200' : 'border-white/10'
+          }`}
+        >
           <div>
-            <div className="text-xs text-cyan-400 font-mono font-semibold uppercase tracking-wider">
+            <div
+              className={`text-xs font-mono font-bold uppercase tracking-wider ${
+                theme === 'light' ? 'text-sky-700' : 'text-cyan-400'
+              }`}
+            >
               Chi tiết ảnh • {classNameTitle}
             </div>
-            <div className="text-sm font-bold text-slate-100 truncate max-w-xs">
+            <div
+              className={`text-sm font-bold truncate max-w-xs ${
+                theme === 'light' ? 'text-slate-900' : 'text-slate-100'
+              }`}
+            >
               {image.original_name || image.id}
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white">
+          <button
+            onClick={onClose}
+            className={`p-1 rounded-lg transition ${
+              theme === 'light'
+                ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                : 'text-slate-400 hover:text-white hover:bg-white/10'
+            }`}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* High-res Image Preview */}
-        <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-black border border-white/10 flex items-center justify-center">
+        <div
+          className={`relative rounded-xl overflow-hidden aspect-[4/3] flex items-center justify-center border ${
+            theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-black border-white/10'
+          }`}
+        >
           <img
             src={api.getImageUrl(image.id, false)}
             alt="Preview"
             className="w-full h-full object-contain"
           />
-          <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/60 backdrop-blur text-[10px] font-mono text-cyan-300 border border-white/10">
+          <div
+            className={`absolute top-2 right-2 px-2 py-0.5 rounded backdrop-blur text-[10px] font-mono border shadow-sm ${
+              theme === 'light'
+                ? 'bg-white/90 text-sky-800 border-slate-200'
+                : 'bg-black/60 text-cyan-300 border-white/10'
+            }`}
+          >
             {image.width} × {image.height} px
           </div>
         </div>
 
         {/* Metadata Details */}
-        <div className="grid grid-cols-2 gap-2 text-xs bg-white/5 p-3 rounded-xl border border-white/5 font-mono">
-          <div className="flex items-center gap-2 text-slate-300">
-            <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+        <div
+          className={`grid grid-cols-2 gap-2 text-xs p-3 rounded-xl border font-mono transition-colors ${
+            theme === 'light'
+              ? 'bg-slate-50 border-slate-200 text-slate-700'
+              : 'bg-white/5 border-white/5 text-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Maximize2 className="w-3.5 h-3.5 text-cyan-600" />
             <span>Gốc: {image.original_width}×{image.original_height}</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-300">
-            <Camera className="w-3.5 h-3.5 text-purple-400" />
+          <div className="flex items-center gap-2">
+            <Camera className="w-3.5 h-3.5 text-purple-600" />
             <span>Nguồn: {image.source === 'webcam' ? 'Webcam' : 'Tải lên'}</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-300">
-            <HardDrive className="w-3.5 h-3.5 text-blue-400" />
-            <span>Tập: <strong className="text-white uppercase">{image.subset}</strong></span>
+          <div className="flex items-center gap-2">
+            <HardDrive className="w-3.5 h-3.5 text-blue-600" />
+            <span>
+              Tập:{' '}
+              <strong className={theme === 'light' ? 'text-slate-900 uppercase' : 'text-white uppercase'}>
+                {image.subset}
+              </strong>
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-slate-300">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600" />
             <span>{new Date(image.created_at).toLocaleTimeString()}</span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+        <div
+          className={`flex items-center justify-between pt-2 border-t ${
+            theme === 'light' ? 'border-slate-200' : 'border-white/10'
+          }`}
+        >
           <button
             onClick={handleDelete}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 font-medium transition"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              theme === 'light'
+                ? 'text-rose-700 hover:bg-rose-50 border border-rose-200'
+                : 'text-rose-400 hover:bg-rose-500/10'
+            }`}
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Xoá ảnh này</span>
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg text-xs bg-white/10 hover:bg-white/20 text-white font-medium transition"
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+              theme === 'light'
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                : 'bg-white/10 hover:bg-white/20 text-white'
+            }`}
           >
             Đóng
           </button>

@@ -251,51 +251,70 @@ html.light input[type="range"] {
 
 /* Critical Text Contrast Corrections for Pale/Pastel Accents in Light Mode */
 html.light .text-rose-200,
-html.light .text-rose-300 {
+html.light [class*="text-rose-200"],
+html.light .text-rose-300,
+html.light [class*="text-rose-300"] {
   color: #9f1239 !important; /* Rose 800 */
 }
-html.light .text-rose-400 {
+html.light .text-rose-400,
+html.light [class*="text-rose-400"] {
   color: #be123c !important; /* Rose 700 */
 }
 
 html.light .text-amber-100,
+html.light [class*="text-amber-100"],
 html.light .text-amber-200,
-html.light .text-amber-300 {
+html.light [class*="text-amber-200"],
+html.light .text-amber-300,
+html.light [class*="text-amber-300"] {
   color: #92400e !important; /* Amber 800 */
 }
-html.light .text-amber-400 {
+html.light .text-amber-400,
+html.light [class*="text-amber-400"] {
   color: #b45309 !important; /* Amber 700 */
 }
 
 html.light .text-cyan-200,
-html.light .text-cyan-300 {
+html.light [class*="text-cyan-200"],
+html.light .text-cyan-300,
+html.light [class*="text-cyan-300"] {
   color: #0369a1 !important; /* Sky 700 */
 }
-html.light .text-cyan-400 {
+html.light .text-cyan-400,
+html.light [class*="text-cyan-400"] {
   color: #0284c7 !important; /* Sky 600 */
 }
 
 html.light .text-emerald-200,
-html.light .text-emerald-300 {
+html.light [class*="text-emerald-200"],
+html.light .text-emerald-300,
+html.light [class*="text-emerald-300"] {
   color: #065f46 !important; /* Emerald 800 */
 }
-html.light .text-emerald-400 {
+html.light .text-emerald-400,
+html.light [class*="text-emerald-400"] {
   color: #047857 !important; /* Emerald 700 */
 }
 
 html.light .text-purple-200,
-html.light .text-purple-300 {
+html.light [class*="text-purple-200"],
+html.light .text-purple-300,
+html.light [class*="text-purple-300"] {
   color: #6b21a8 !important; /* Purple 800 */
 }
-html.light .text-purple-400 {
+html.light .text-purple-400,
+html.light [class*="text-purple-400"] {
   color: #7e22ce !important; /* Purple 700 */
 }
 
 html.light .text-blue-200,
-html.light .text-blue-300 {
+html.light [class*="text-blue-200"],
+html.light .text-blue-300,
+html.light [class*="text-blue-300"] {
   color: #1e40af !important; /* Blue 800 */
 }
-html.light .text-blue-400 {
+html.light .text-blue-400,
+html.light [class*="text-blue-400"] {
   color: #1d4ed8 !important; /* Blue 700 */
 }
 
