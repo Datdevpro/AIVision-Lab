@@ -1,0 +1,17 @@
+# Vision Lab AI - backend runtime dependencies.
+# torch/torchvision: install FIRST with the build that matches your machine (see README):
+#   CPU only : pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   CUDA 12.4: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+torch>=2.2
+torchvision>=0.17
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7
+sqlmodel>=0.0.22
+sqlalchemy>=2.0
+pillow>=10.3
+numpy>=1.26
+scikit-learn>=1.4
+# Optional: enables ONNX export (the capability endpoint reports whether it is usable)
+onnx>=1.16
