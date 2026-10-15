@@ -83,6 +83,8 @@ export const api = {
       body: JSON.stringify({ name }),
     }),
   deleteClass: (classId: string) => request<void>(`/classes/${classId}`, { method: 'DELETE' }),
+  clearClassImages: (classId: string) =>
+    request<{ deleted: number }>(`/classes/${classId}/images`, { method: 'DELETE' }),
 
   // Images
   uploadImages: (

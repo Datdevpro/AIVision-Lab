@@ -19,7 +19,7 @@ import { NetworkVisualizer } from '../neural-visualizer/NetworkVisualizer'
 
 export const AnalyticsWorkspace: React.FC = () => {
   const { activeBottomTab, setActiveBottomTab, theme } = useLabStore()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   const tabs: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
     { id: 'metrics', label: 'Biểu đồ Huấn luyện', icon: <LineChart className="w-3.5 h-3.5" /> },

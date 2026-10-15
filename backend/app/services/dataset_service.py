@@ -133,6 +133,41 @@ def delete_class(session: Session, class_id: str) -> None:
     session.commit()
 
 
+def clear_class_images(session: Session, class_id: str) -> int:
+    c = session.get(ImageClass, class_id)
+    if not c:
+        raise not_found("class")
+    settings = get_settings()
+    n = 0
+    for img in session.exec(select(ImageRecord).where(ImageRecord.class_id == class_id)):
+        _delete_image_files(img, settings)
+        session.delete(img)
+        n += 1
+    session.commit()
+    return n
+
+
+def export_class_images(session: Session, class_id: str) -> tuple[str, bytes]:
+    """Create a zip archive containing all images of this class."""
+    import io
+    import zipfile
+    c = session.get(ImageClass, class_id)
+    if not c:
+        raise not_found("class")
+    settings = get_settings()
+    imgs = list(session.exec(select(ImageRecord).where(ImageRecord.class_id == class_id).order_by(ImageRecord.created_at)))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for idx, img in enumerate(imgs, 1):
+            path = (settings.projects_dir / img.rel_path).resolve()
+            if path.is_file():
+                ext = path.suffix or ".jpg"
+                filename = f"{c.name}_{idx:03d}{ext}"
+                zf.write(path, arcname=filename)
+    buf.seek(0)
+    return f"{c.name}_samples.zip", buf.getvalue()
+
+
 # ------------------------------------------------------------------ images
 def image_out(img: ImageRecord) -> ImageOut:
     return ImageOut(

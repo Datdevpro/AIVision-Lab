@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
+import urllib.parse
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
@@ -77,6 +78,24 @@ def rename_class(class_id: str, body: ClassUpdate, session: SessionDep):
 @router.delete("/classes/{class_id}", status_code=204)
 def delete_class(class_id: str, session: SessionDep):
     ds.delete_class(session, class_id)
+
+
+@router.delete("/classes/{class_id}/images")
+def clear_class_images(class_id: str, session: SessionDep):
+    """Delete all images in a specific class."""
+    return {"deleted": ds.clear_class_images(session, class_id)}
+
+
+@router.get("/classes/{class_id}/export")
+def export_class_images(class_id: str, session: SessionDep):
+    """Download all images in this class as a ZIP file."""
+    filename, zip_bytes = ds.export_class_images(session, class_id)
+    encoded_filename = urllib.parse.quote(filename)
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+    )
 
 
 @router.get("/projects/{project_id}/dataset", response_model=DatasetOut)
