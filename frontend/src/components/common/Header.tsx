@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   BrainCircuit,
   Cpu,
@@ -283,13 +284,19 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Delete Project Confirmation Modal */}
-      {projectToDelete && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
-          <div className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 ${
-            theme === 'light'
-              ? 'bg-white border-slate-200 text-slate-900'
-              : 'bg-[#0c1019] border-white/10 text-slate-100'
-          }`}>
+      {projectToDelete && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={() => setProjectToDelete(null)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 ${
+              theme === 'light'
+                ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/50'
+                : 'bg-[#0c1019] border-white/10 text-slate-100 shadow-cyan-950/50'
+            }`}
+          >
             <div className="flex items-center gap-2.5 text-rose-500 font-bold text-sm">
               <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center">
                 <Trash2 className="w-4 h-4 text-rose-500" />
@@ -326,18 +333,23 @@ export const Header: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Create Project Modal */}
-      {showNewProject && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {showNewProject && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={() => setShowNewProject(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in"
+        >
           <form
             onSubmit={handleCreate}
-            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 ${
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 ${
               theme === 'light'
-                ? 'bg-white border-slate-200 text-slate-900'
-                : 'bg-[#0c1019] border-white/10 text-slate-100'
+                ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/50'
+                : 'bg-[#0c1019] border-white/10 text-slate-100 shadow-cyan-950/50'
             }`}
           >
             <div className="flex items-center gap-2 text-cyan-500 font-semibold text-sm">
@@ -380,7 +392,8 @@ export const Header: React.FC = () => {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   )
