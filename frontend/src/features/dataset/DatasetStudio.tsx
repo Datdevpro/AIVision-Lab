@@ -30,12 +30,13 @@ export const DatasetStudio: React.FC = () => {
   const totalImages = summary?.total_images || 0
 
   const generateNextClassName = () => {
-    let x = 1
+    // Tên lớp mới sẽ có số thứ tự bằng tổng số lớp hiện có + 1, không phụ thuộc vào việc các lớp trước đó đã đổi tên hay chưa
+    let nextNum = classes.length + 1
     const existingNames = new Set(classes.map((c) => c.name.trim().toLowerCase()))
-    while (existingNames.has(`lớp ${x}`.toLowerCase())) {
-      x++
+    while (existingNames.has(`lớp ${nextNum}`.toLowerCase())) {
+      nextNum++
     }
-    return `Lớp ${x}`
+    return `Lớp ${nextNum}`
   }
 
   const handleAddQuickClass = async () => {
