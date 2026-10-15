@@ -168,12 +168,14 @@ export const useLabStore = create<LabState>((set, get) => ({
     try {
       await api.deleteProject(id)
       const remaining = get().projects.filter((p) => p.id !== id)
+      const wasCurrent = get().currentProject?.id === id
+      const nextCurrent = wasCurrent ? (remaining[0] || null) : get().currentProject
       set({
         projects: remaining,
-        currentProject: remaining[0] || null,
-        dataset: null,
+        currentProject: nextCurrent,
+        ...(wasCurrent ? { dataset: null, activeExperiment: null, lastPrediction: null, hasAttemptedTraining: false } : {}),
       })
-      if (remaining[0]) {
+      if (wasCurrent && nextCurrent) {
         get().loadDataset()
         get().loadExperiments()
       }

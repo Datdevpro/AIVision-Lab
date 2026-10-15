@@ -1,9 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   BrainCircuit,
   Cpu,
   FolderPlus,
-  HelpCircle,
   Layers,
   Moon,
   Sparkles,
@@ -12,7 +11,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useLabStore } from '@/store/useLabStore'
-import type { Mode } from '@/types/api'
+import type { Mode, Project } from '@/types/api'
 
 export const Header: React.FC = () => {
   const {
@@ -24,7 +23,6 @@ export const Header: React.FC = () => {
     deleteProject,
     config,
     setMode,
-    setSelectedLessonKey,
     theme,
     toggleTheme,
   } = useLabStore()
@@ -32,6 +30,23 @@ export const Header: React.FC = () => {
   const [showNewProject, setShowNewProject] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProjectDropdown(false)
+      }
+    }
+    if (showProjectDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showProjectDropdown])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,10 +97,10 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Project Selector */}
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer ${
               theme === 'light'
                 ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-800 shadow-sm'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-200'
@@ -99,22 +114,32 @@ export const Header: React.FC = () => {
           </button>
 
           {showProjectDropdown && (
-            <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-[#0c1019] border border-white/10 shadow-2xl p-1.5 z-50">
-              <div className="text-[10px] font-semibold text-slate-400 px-2 py-1 uppercase tracking-wider">
+            <div className={`absolute left-0 top-full mt-1.5 w-64 rounded-xl border shadow-2xl p-1.5 z-50 ${
+              theme === 'light'
+                ? 'bg-white border-slate-200 text-slate-800'
+                : 'bg-[#0c1019] border-white/10 text-slate-200'
+            }`}>
+              <div className={`text-[10px] font-semibold px-2 py-1 uppercase tracking-wider ${
+                theme === 'light' ? 'text-slate-500' : 'text-slate-400'
+              }`}>
                 Danh sách dự án
               </div>
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {projects.map((p) => (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs cursor-pointer transition ${
+                    className={`flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition group ${
                       currentProject?.id === p.id
-                        ? 'bg-cyan-500/20 text-cyan-300 font-medium'
+                        ? theme === 'light'
+                          ? 'bg-sky-50 text-sky-900 font-semibold'
+                          : 'bg-cyan-500/20 text-cyan-300 font-medium'
+                        : theme === 'light'
+                        ? 'text-slate-700 hover:bg-slate-100'
                         : 'text-slate-300 hover:bg-white/5'
                     }`}
                   >
                     <span
-                      className="truncate flex-1"
+                      className="truncate flex-1 cursor-pointer"
                       onClick={() => {
                         setCurrentProject(p)
                         setShowProjectDropdown(false)
@@ -124,28 +149,36 @@ export const Header: React.FC = () => {
                     </span>
                     {projects.length > 1 && (
                       <button
+                        type="button"
                         title="Xoá dự án"
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (confirm(`Bạn có chắc muốn xoá dự án "${p.name}"?`)) {
-                            deleteProject(p.id)
-                          }
+                          setProjectToDelete(p)
                         }}
-                        className="p-1 hover:text-rose-400 text-slate-500"
+                        className={`p-1.5 rounded-md transition cursor-pointer ${
+                          theme === 'light'
+                            ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                            : 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10'
+                        }`}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                 ))}
               </div>
-              <div className="border-t border-white/5 mt-1 pt-1">
+              <div className={`border-t mt-1 pt-1 ${theme === 'light' ? 'border-slate-100' : 'border-white/5'}`}>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowProjectDropdown(false)
                     setShowNewProject(true)
                   }}
-                  className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-cyan-400 hover:bg-cyan-500/10 font-medium transition"
+                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                    theme === 'light'
+                      ? 'text-sky-600 hover:bg-sky-50'
+                      : 'text-cyan-400 hover:bg-cyan-500/10'
+                  }`}
                 >
                   <FolderPlus className="w-3.5 h-3.5" />
                   <span>Tạo dự án mới...</span>
@@ -179,8 +212,8 @@ export const Header: React.FC = () => {
                   active
                     ? 'bg-black/20 text-white'
                     : theme === 'light'
-                    ? 'bg-slate-200 text-slate-700 border border-slate-300/50 font-semibold'
-                    : 'bg-white/5 text-slate-400'
+                    ? 'bg-slate-200 text-slate-700'
+                    : 'bg-white/10 text-slate-400'
                 }`}
               >
                 {m.tag}
@@ -190,7 +223,7 @@ export const Header: React.FC = () => {
         })}
       </div>
 
-      {/* Right Controls: Device, Theme Switch & Help */}
+      {/* Right Controls: Device & Theme Switch */}
       <div className="flex items-center gap-2.5">
         {/* Device Indicator */}
         <div
@@ -247,33 +280,71 @@ export const Header: React.FC = () => {
             {theme === 'dark' ? 'Tối' : 'Sáng'}
           </span>
         </button>
-
-        {/* Learning Hub / Help Button */}
-        <button
-          onClick={() => setSelectedLessonKey('transfer_learning')}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition ${
-            theme === 'light'
-              ? 'bg-purple-50 border border-purple-300 text-purple-800 hover:bg-purple-100 font-semibold shadow-sm'
-              : 'bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25'
-          }`}
-        >
-          <HelpCircle className="w-3.5 h-3.5" />
-          <span>Kiến thức AI</span>
-        </button>
       </div>
+
+      {/* Delete Project Confirmation Modal */}
+      {projectToDelete && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 ${
+            theme === 'light'
+              ? 'bg-white border-slate-200 text-slate-900'
+              : 'bg-[#0c1019] border-white/10 text-slate-100'
+          }`}>
+            <div className="flex items-center gap-2.5 text-rose-500 font-bold text-sm">
+              <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center">
+                <Trash2 className="w-4 h-4 text-rose-500" />
+              </div>
+              <span>Xác nhận xoá dự án</span>
+            </div>
+            <p className={`text-xs leading-relaxed ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>
+              Bạn có chắc chắn muốn xoá vĩnh viễn dự án <strong className={theme === 'light' ? 'text-slate-950 font-bold' : 'text-white'}>"{projectToDelete.name}"</strong>? Toàn bộ các lớp ảnh, tập dữ liệu và kết quả huấn luyện liên quan sẽ bị xoá và không thể hoàn tác.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  theme === 'light'
+                    ? 'text-slate-600 hover:bg-slate-100'
+                    : 'text-slate-400 hover:bg-white/5'
+                }`}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = projectToDelete.id
+                  setProjectToDelete(null)
+                  setShowProjectDropdown(false)
+                  await deleteProject(id)
+                }}
+                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/25 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xoá vĩnh viễn</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Project Modal */}
       {showNewProject && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <form
             onSubmit={handleCreate}
-            className="w-full max-w-sm rounded-2xl bg-[#0c1019] border border-white/10 p-5 shadow-2xl space-y-4"
+            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 ${
+              theme === 'light'
+                ? 'bg-white border-slate-200 text-slate-900'
+                : 'bg-[#0c1019] border-white/10 text-slate-100'
+            }`}
           >
-            <div className="flex items-center gap-2 text-cyan-400 font-semibold text-sm">
+            <div className="flex items-center gap-2 text-cyan-500 font-semibold text-sm">
               <Sparkles className="w-4 h-4" />
               <span>Tạo Dự án Vision Lab Mới</span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className={`text-xs ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>
               Đặt tên cho dự án phân loại hình ảnh của bạn (ví dụ: "Phân biệt Chó vs Mèo", "Nhận diện Cử chỉ tay").
             </p>
             <input
@@ -282,20 +353,28 @@ export const Header: React.FC = () => {
               placeholder="Tên dự án..."
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:border-cyan-400 ${
+                theme === 'light'
+                  ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400'
+                  : 'bg-black/40 border-white/15 text-slate-100 placeholder:text-slate-500'
+              }`}
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowNewProject(false)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5"
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                  theme === 'light'
+                    ? 'text-slate-600 hover:bg-slate-100'
+                    : 'text-slate-400 hover:bg-white/5'
+                }`}
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={!newProjectName.trim()}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-50 shadow-md shadow-cyan-500/20"
+                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-500 to-blue-600 text-white disabled:opacity-50 shadow-md shadow-cyan-500/20 cursor-pointer"
               >
                 Tạo Dự án
               </button>
