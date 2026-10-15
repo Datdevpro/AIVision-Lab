@@ -20,12 +20,57 @@ export const LiveTrainingStatus: React.FC = () => {
     startTraining,
     cancelTraining,
     errorBanner,
+    setErrorBanner,
+    setHasAttemptedTraining,
+    theme,
   } = useLabStore()
 
   const summary = dataset?.summary
   const totalImages = summary?.total_images || 0
   const numClasses = summary?.num_classes || 0
-  const canTrain = numClasses >= 2 && totalImages >= 4 && !isTraining
+
+  const handleStartTrain = () => {
+    if (isTraining) return
+
+    const classes = dataset?.classes || []
+
+    // 1. Kiểm tra số lớp tối thiểu
+    if (classes.length < 2) {
+      setHasAttemptedTraining(true)
+      setErrorBanner('Cần ít nhất 2 lớp để huấn luyện bộ phân loại ảnh.')
+      return
+    }
+
+    // 2. Kiểm tra lớp không có ảnh
+    const emptyClasses = classes.filter((c) => (c.images?.length || 0) === 0)
+    if (emptyClasses.length > 0) {
+      setHasAttemptedTraining(true)
+      const names = emptyClasses.map((c) => `"${c.name}"`).join(', ')
+      setErrorBanner(`Chưa thể huấn luyện: Lớp ${names} chưa có ảnh nào. Vui lòng chụp hoặc tải ảnh lên.`)
+      return
+    }
+
+    // 3. Kiểm tra số lượng ảnh tối thiểu yêu cầu (cần tối thiểu 2 ảnh mỗi lớp để chia train và val)
+    const insufficientClasses = classes.filter((c) => (c.images?.length || 0) < 2)
+    if (insufficientClasses.length > 0) {
+      setHasAttemptedTraining(true)
+      const names = insufficientClasses.map((c) => `"${c.name}"`).join(', ')
+      setErrorBanner(`Chưa thể huấn luyện: Lớp ${names} có quá ít ảnh (< 2 ảnh). Cần tối thiểu 2 ảnh mỗi lớp để phân chia dữ liệu.`)
+      return
+    }
+
+    // 4. Kiểm tra tổng số ảnh toàn bộ dự án
+    if (totalImages < 4) {
+      setHasAttemptedTraining(true)
+      setErrorBanner('Chưa thể huấn luyện: Tổng số ảnh toàn bộ dự án cần ít nhất 4 ảnh.')
+      return
+    }
+
+    // Đạt đủ điều kiện:
+    setHasAttemptedTraining(false)
+    setErrorBanner(null)
+    startTraining()
+  }
 
   const latestEpoch = activeJob?.epochs && activeJob.epochs.length > 0
     ? activeJob.epochs[activeJob.epochs.length - 1]
@@ -40,37 +85,30 @@ export const LiveTrainingStatus: React.FC = () => {
         {isTraining ? (
           <button
             onClick={() => cancelTraining()}
-            className="w-full py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-500/25 transition animate-pulse"
+            className="w-full py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-500/25 transition animate-pulse"
           >
             <StopCircle className="w-4 h-4" />
             <span>Dừng huấn luyện (Cancel)</span>
           </button>
         ) : (
           <button
-            onClick={() => startTraining()}
-            disabled={!canTrain}
-            className={`w-full py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xl ${
-              canTrain
-                ? 'bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-300 hover:to-purple-500 text-slate-950 shadow-cyan-500/25 scale-[1.01] hover:scale-[1.02]'
-                : 'bg-white/10 text-slate-500 cursor-not-allowed border border-white/5'
-            }`}
+            onClick={handleStartTrain}
+            className="w-full py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-300 hover:to-purple-500 text-slate-950 shadow-cyan-500/25 scale-[1.01] hover:scale-[1.02] cursor-pointer"
           >
-            <Flame className={`w-4 h-4 ${canTrain ? 'text-amber-300 animate-bounce' : 'text-slate-500'}`} />
-            <span>
-              {numClasses < 2
-                ? 'Cần ít nhất 2 lớp để huấn luyện'
-                : totalImages < 4
-                ? 'Cần thêm ảnh để huấn luyện'
-                : 'Bắt đầu huấn luyện mô hình (Train Model)'}
-            </span>
+            <Flame className="w-4 h-4 text-amber-300 animate-bounce" />
+            <span>Bắt đầu huấn luyện mô hình (Train Model)</span>
           </button>
         )}
       </div>
 
-      {/* Error Message */}
+      {/* Error / Validation Warning Message */}
       {errorBanner && (
-        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+        <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 animate-in fade-in ${
+          theme === 'light'
+            ? 'bg-rose-50 border-rose-300 text-rose-950 font-medium shadow-sm'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+        }`}>
+          <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${theme === 'light' ? 'text-rose-600' : 'text-rose-400'}`} />
           <span>{errorBanner}</span>
         </div>
       )}

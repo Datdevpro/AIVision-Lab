@@ -19,22 +19,36 @@ export const DatasetStudio: React.FC = () => {
     isDatasetLoading,
     loadDataset,
     setErrorBanner,
+    hasAttemptedTraining,
     theme,
   } = useLabStore()
 
-  const [isAddingClass, setIsAddingClass] = useState(false)
-  const [newClassName, setNewClassName] = useState('')
+  const [isCreatingClass, setIsCreatingClass] = useState(false)
 
-  const handleAddClass = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!currentProject || !newClassName.trim()) return
+  const classes = dataset?.classes || []
+  const summary = dataset?.summary
+  const totalImages = summary?.total_images || 0
+
+  const generateNextClassName = () => {
+    let x = 1
+    const existingNames = new Set(classes.map((c) => c.name.trim().toLowerCase()))
+    while (existingNames.has(`lớp ${x}`.toLowerCase())) {
+      x++
+    }
+    return `Lớp ${x}`
+  }
+
+  const handleAddQuickClass = async () => {
+    if (!currentProject || isCreatingClass || classes.length >= 10) return
+    setIsCreatingClass(true)
     try {
-      await api.addClass(currentProject.id, newClassName.trim())
-      setNewClassName('')
-      setIsAddingClass(false)
-      loadDataset()
+      const defaultName = generateNextClassName()
+      await api.addClass(currentProject.id, defaultName)
+      await loadDataset()
     } catch (e: any) {
       setErrorBanner(e.message)
+    } finally {
+      setIsCreatingClass(false)
     }
   }
 
@@ -49,10 +63,6 @@ export const DatasetStudio: React.FC = () => {
       }
     }
   }
-
-  const classes = dataset?.classes || []
-  const summary = dataset?.summary
-  const totalImages = summary?.total_images || 0
 
   return (
     <div className="h-full flex flex-col bg-[#07090e]/60 border-r border-white/10 select-none">
@@ -122,59 +132,38 @@ export const DatasetStudio: React.FC = () => {
 
       {/* Classes Scrollable List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Quality Warnings */}
-        {summary?.warnings && <DatasetWarningsBanner warnings={summary.warnings} />}
+        {/* Quality Warnings: Only show when user has attempted training */}
+        {hasAttemptedTraining && summary?.warnings && summary.warnings.length > 0 && (
+          <DatasetWarningsBanner warnings={summary.warnings} />
+        )}
 
         {/* Classes Cards */}
         {classes.map((cls) => (
           <ClassCard key={cls.id} classItem={cls} canDelete={classes.length > 2} />
         ))}
 
-        {/* Add Class Form / Button */}
-        {isAddingClass ? (
-          <form
-            onSubmit={handleAddClass}
-            className="rounded-2xl border border-cyan-500/40 bg-cyan-500/5 p-3.5 space-y-3 animate-in fade-in"
-          >
-            <div className="text-xs font-semibold text-cyan-300">Thêm Lớp Phân Loại Mới</div>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Tên lớp (ví dụ: Mèo, Chó, Bút)..."
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-black/60 border border-white/15 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 font-medium"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddingClass(false)
-                  setNewClassName('')
-                }}
-                className="px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:bg-white/5"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={!newClassName.trim()}
-                className="px-3.5 py-1 rounded-lg text-xs font-medium bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold disabled:opacity-40 shadow-md shadow-cyan-500/20"
-              >
-                Lưu lớp
-              </button>
-            </div>
-          </form>
-        ) : (
-          <button
-            onClick={() => setIsAddingClass(true)}
-            disabled={classes.length >= 10}
-            className="w-full py-3 rounded-2xl border border-dashed border-white/15 hover:border-cyan-400/50 hover:bg-cyan-500/5 text-slate-400 hover:text-cyan-300 text-xs font-medium flex items-center justify-center gap-2 transition group disabled:opacity-30"
-          >
-            <Plus className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition" />
-            <span>Thêm lớp mới ({classes.length}/10)</span>
-          </button>
-        )}
+        {/* Quick Add Class Button */}
+        <button
+          onClick={handleAddQuickClass}
+          disabled={classes.length >= 10 || isCreatingClass}
+          className={`w-full py-3 rounded-2xl border border-dashed transition flex items-center justify-center gap-2 text-xs font-semibold group disabled:opacity-40 disabled:cursor-not-allowed ${
+            theme === 'light'
+              ? 'border-slate-300 bg-white hover:border-sky-500 hover:bg-sky-50 text-slate-700 hover:text-sky-700 shadow-sm'
+              : 'border-white/15 bg-white/[0.02] hover:border-cyan-400/50 hover:bg-cyan-500/5 text-slate-400 hover:text-cyan-300'
+          }`}
+        >
+          {isCreatingClass ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin text-cyan-500" />
+              <span>Đang tạo khung lớp mới...</span>
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 transition group-hover:scale-110" />
+              <span>Thêm lớp mới ({classes.length}/10)</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

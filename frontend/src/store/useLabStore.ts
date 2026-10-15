@@ -79,6 +79,8 @@ interface LabState {
   setSelectedLessonKey: (key: string | null) => void
   errorBanner: string | null
   setErrorBanner: (msg: string | null) => void
+  hasAttemptedTraining: boolean
+  setHasAttemptedTraining: (attempted: boolean) => void
   theme: 'dark' | 'light'
   setTheme: (theme: 'dark' | 'light') => void
   toggleTheme: () => void
@@ -145,7 +147,7 @@ export const useLabStore = create<LabState>((set, get) => ({
   },
 
   setCurrentProject: (p: Project) => {
-    set({ currentProject: p, activeExperiment: null, lastPrediction: null })
+    set({ currentProject: p, activeExperiment: null, lastPrediction: null, hasAttemptedTraining: false })
     get().loadDataset()
     get().loadExperiments()
   },
@@ -264,10 +266,10 @@ export const useLabStore = create<LabState>((set, get) => ({
     set({ errorBanner: null })
     try {
       const job = await api.startTraining(proj.id, get().config, experimentName)
-      set({ activeJob: job, isTraining: true, activeBottomTab: 'metrics' })
+      set({ activeJob: job, isTraining: true, activeBottomTab: 'metrics', hasAttemptedTraining: false })
       get().connectWebSocket(job.id)
     } catch (e: any) {
-      set({ errorBanner: e.message || 'Không thể bắt đầu huấn luyện' })
+      set({ hasAttemptedTraining: true, errorBanner: e.message || 'Không thể bắt đầu huấn luyện' })
     }
   },
 
@@ -459,6 +461,8 @@ export const useLabStore = create<LabState>((set, get) => ({
   setSelectedLessonKey: (key: string | null) => set({ selectedLessonKey: key }),
   errorBanner: null,
   setErrorBanner: (msg: string | null) => set({ errorBanner: msg }),
+  hasAttemptedTraining: false,
+  setHasAttemptedTraining: (attempted: boolean) => set({ hasAttemptedTraining: attempted }),
 
   theme: (typeof window !== 'undefined' && localStorage.getItem('visionlab_theme') === 'light' ? 'light' : 'dark') as 'dark' | 'light',
   setTheme: (theme: 'dark' | 'light') => {

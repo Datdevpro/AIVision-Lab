@@ -119,6 +119,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classItem, canDelete }) =>
                 autoFocus
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
+                onBlur={handleRename}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleRename()
                   if (e.key === 'Escape') {
@@ -132,21 +133,29 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classItem, canDelete }) =>
                     : 'bg-black/60 border border-cyan-400 text-white'
                 }`}
               />
-              <button onClick={handleRename} className="p-1 text-cyan-500 hover:text-cyan-600">
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleRename}
+                className="p-1 text-cyan-500 hover:text-cyan-600"
+              >
                 <Check className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 group">
+            <div
+              onClick={() => setIsEditingName(true)}
+              className="flex items-center gap-1.5 group cursor-pointer"
+              title="Bấm để đổi tên lớp"
+            >
               <h4 className={`font-bold text-sm transition ${
                 theme === 'light' ? 'text-slate-900 group-hover:text-sky-600' : 'text-slate-100 group-hover:text-cyan-300'
               }`}>
                 {classItem.name}
               </h4>
               <button
-                onClick={() => setIsEditingName(true)}
-                className={`opacity-0 group-hover:opacity-100 p-0.5 transition ${
-                  theme === 'light' ? 'text-slate-400 hover:text-slate-800' : 'text-slate-400 hover:text-white'
+                type="button"
+                className={`opacity-50 group-hover:opacity-100 p-0.5 transition ${
+                  theme === 'light' ? 'text-slate-500 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                 }`}
                 title="Đổi tên lớp"
               >
