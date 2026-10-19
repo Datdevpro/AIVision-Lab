@@ -14,8 +14,30 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: backend, changeOrigin: true },
-      '/ws': { target: backend.replace(/^http/, 'ws'), ws: true, changeOrigin: true },
+      '/api': {
+        target: backend,
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (res && 'writeHead' in res && !res.headersSent) {
+              res.writeHead(503, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: { message: 'Backend đang khởi động hoặc chưa sẵn sàng. Vui lòng thử lại sau giây lát.' } }))
+            }
+          })
+        },
+      },
+      '/ws': {
+        target: backend.replace(/^http/, 'ws'),
+        ws: true,
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, socket) => {
+            if (socket && 'destroy' in socket) {
+              socket.destroy()
+            }
+          })
+        },
+      },
     },
   },
   build: {

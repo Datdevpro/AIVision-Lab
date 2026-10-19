@@ -1,0 +1,67 @@
+.nv { --nv-bg: #0d1420; --nv-panel: #111c2b; --nv-line: #253345; --nv-text: #e1e9f1; --nv-muted: #93a4b8; background: var(--nv-bg); color: var(--nv-text); border: 1px solid var(--nv-line); border-radius: 14px; font-size: 12px; overflow: hidden; min-height: 470px; display: flex; flex-direction: column; }
+.nv.nv-light { --nv-bg: #fcfcfa; --nv-panel: #f4f5f3; --nv-line: #dce1e4; --nv-text: #263848; --nv-muted: #657887; }
+.nv.nv-expanded { position: fixed; inset: 20px; z-index: 100; min-height: 0; box-shadow: 0 0 0 30px #0009, 0 20px 80px #0005; }
+.nv-expanded .nv-workspace { overflow: auto; }
+.nv-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid var(--nv-line); flex-wrap: wrap; }
+.nv-eyebrow { font: 9px var(--font-mono); letter-spacing: 1.6px; color: var(--nv-muted); }
+.nv h3 { font-size: 17px; font-weight: 650; margin: 4px 0 0; letter-spacing: -.4px; }
+.nv h3 span { font-size: 11px; font-weight: 400; color: var(--nv-muted); margin-left: 10px; letter-spacing: 0; }
+.nv-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.nv button, .nv select { color: var(--nv-text); background: var(--nv-panel); border: 1px solid var(--nv-line); border-radius: 7px; min-height: 30px; padding: 5px 9px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-size: 11px; }
+.nv button:hover:not(:disabled) { border-color: #168ac1; }
+.nv button:disabled { opacity: .35; cursor: not-allowed; }
+.nv button:focus-visible, .nv select:focus-visible, .nv input:focus-visible { outline: 2px solid #168ac1; outline-offset: 3px; }
+.nv .nv-primary { background: #168ac116; border-color: #168ac155; color: #168ac1; }
+.nv .nv-active { background: #168ac130; }
+.nv-configbar { display: flex; gap: 19px; align-items: center; padding: 10px 20px; background: var(--nv-panel); border-bottom: 1px solid var(--nv-line); flex-wrap: wrap; }
+.nv-config-label { font: 9px var(--font-mono); color: var(--nv-muted); letter-spacing: 1px; }
+.nv-configbar label { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.nv-stepper { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); }
+.nv-stepper button { border-radius: 50%; width: 24px; min-height: 24px; padding: 0; }
+.nv-stepper > span { min-width: 18px; text-align: center; }
+.nv-tag { font: 10px var(--font-mono); border: 1px solid var(--nv-line); padding: 3px 6px; border-radius: 4px; }
+.nv-muted, .nv-edit-hint { color: var(--nv-muted); font-size: 10px; }
+.nv-edit-hint { margin-left: auto; }
+.nv-workspace { display: flex; flex: 1; min-height: 0; }
+.nv-network { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.nv-graph-scroll { overflow: auto; padding: 10px 12px 0; }
+.nv-graph { width: 100%; height: 360px; display: block; }
+.nv-layer-title { fill: var(--nv-text); font: 600 11px var(--font-sans); }
+.nv-layer-subtitle { fill: var(--nv-muted); font: 11px var(--font-sans); }
+.nv-neuron { cursor: pointer; outline: none; }
+.nv-neuron-frame { fill: var(--nv-bg); stroke: var(--nv-line); stroke-width: 1; }
+.nv-selected, .nv-neuron:focus-visible .nv-neuron-frame { stroke: #168ac1; stroke-width: 2.5; }
+.nv-neuron-label { fill: var(--nv-text); font: 10px var(--font-sans); pointer-events: none; paint-order: stroke; stroke: var(--nv-bg); stroke-width: 5px; stroke-linejoin: round; }
+.nv-flow { animation: nv-flow 1s linear infinite; }
+.nv-flow-reverse { animation-direction: reverse; }
+.nv-training { padding: 12px 20px; border-bottom: 1px solid var(--nv-line); background: var(--nv-panel); }
+.nv-training-heading, .nv-training-metrics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.nv-training-heading strong { margin-right: auto; color: #168ac1; }
+.nv-training-failed .nv-training-heading strong { color: #e87171; }
+.nv-training-completed .nv-training-heading strong { color: #3aab82; }
+.nv-training-metrics { margin-top: 9px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.nv-training p { overflow-wrap: anywhere; margin-bottom: 0; }
+@keyframes nv-flow { to { stroke-dashoffset: -44; } }
+.nv-legend { display: flex; align-items: center; gap: 10px; padding: 12px 20px; font-size: 10px; flex-wrap: wrap; }
+.nv-legend label { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+.nv-legend input { accent-color: #168ac1; }
+.nv-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.nv-legend i { width: 5px; height: 5px; border-radius: 50%; }
+.nv-color-scale { width: 80px; height: 7px; background: linear-gradient(90deg, #ed983e, #f4f1e9, #168ac1); border-radius: 2px; }
+.nv-inspector { width: 250px; flex-shrink: 0; border-left: 1px solid var(--nv-line); padding: 20px; background: var(--nv-panel); overflow-y: auto; }
+.nv h4 { font-size: 13px; margin: 7px 0 10px; font-weight: 600; }
+.nv p { font-size: 11px; color: var(--nv-muted); line-height: 1.7; margin: 8px 0; }
+.nv small { display: block; font-size: 9px; color: var(--nv-muted); line-height: 1.6; margin-top: 6px; }
+.nv code { display: block; font-size: 10px; margin: 10px 0; }
+.nv-detail-map { width: 70px; height: 70px; border: 4px solid var(--nv-bg); outline: 1px solid var(--nv-line); border-radius: 5px; margin: 14px 0; }
+.nv-output, .nv-loss { border-top: 1px solid var(--nv-line); padding-top: 15px; margin-top: 15px; }
+.nv-probability { margin-top: 9px; font-size: 10px; }
+.nv-probability > div { display: flex; justify-content: space-between; gap: 10px; }
+.nv progress { display: block; width: 100%; height: 5px; margin-top: 5px; accent-color: #168ac1; }
+.nv-loss-values { display: flex; justify-content: space-between; gap: 8px; font: 10px var(--font-mono); margin-top: 10px; }
+.nv-loss svg { width: 100%; margin-top: 7px; }
+.nv-footer { border-top: 1px solid var(--nv-line); display: flex; align-items: center; gap: 18px; justify-content: space-between; padding: 11px 20px; font-size: 10px; color: var(--nv-muted); }
+.nv-footer b { color: var(--nv-text); font-weight: 500; }
+.nv-footer button { white-space: nowrap; background: transparent; border: 0; color: #168ac1; padding: 0; }
+@media (max-width: 1000px) { .nv-workspace { flex-direction: column; overflow: auto; } .nv-inspector { width: auto; border-left: 0; border-top: 1px solid var(--nv-line); } .nv h3 span { display: none; } .nv-edit-hint { margin-left: 0; } .nv.nv-expanded { inset: 8px; } }
+@media (prefers-reduced-motion: reduce) { .nv-flow { animation: none; } }

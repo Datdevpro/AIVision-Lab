@@ -27,8 +27,13 @@ def _weights_cached() -> bool:
     return (get_settings().torch_home / "hub" / "checkpoints" / WEIGHTS_FILE).is_file()
 
 
-@router.get("/system/capabilities")
-def capabilities() -> dict[str, Any]:
+_cached_static_capabilities: dict[str, Any] | None = None
+
+
+def _get_static_capabilities() -> dict[str, Any]:
+    global _cached_static_capabilities
+    if _cached_static_capabilities is not None:
+        return _cached_static_capabilities
     import torch
     import torchvision
 
@@ -41,12 +46,25 @@ def capabilities() -> dict[str, Any]:
         device["vram_gb"] = round(props.total_memory / 1024**3, 1)
         if device["type"] == "cuda":
             device["name"] = props.name
+    _cached_static_capabilities = {
+        "device": device,
+        "torch_version": torch.__version__,
+        "torchvision_version": torchvision.__version__,
+        "onnx_available": onnx_available(),
+    }
+    return _cached_static_capabilities
+
+
+@router.get("/system/capabilities")
+def capabilities() -> dict[str, Any]:
+    s = get_settings()
+    static = _get_static_capabilities()
     active = manager.active_job()
     return {
-        "device": device,
-        "torch_version": torch.__version__, "torchvision_version": torchvision.__version__,
+        "device": static["device"],
+        "torch_version": static["torch_version"], "torchvision_version": static["torchvision_version"],
         "pretrained_weights_cached": _weights_cached(),
-        "onnx_available": onnx_available(),
+        "onnx_available": static["onnx_available"],
         "modes": MODES,
         "advanced_mode_enabled": True,
         "training_busy": bool(active and active.status not in {"completed", "cancelled", "failed"}),

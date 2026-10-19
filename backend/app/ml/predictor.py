@@ -4,15 +4,20 @@ from __future__ import annotations
 import threading
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-import torch
 from PIL import Image
 
 from app.ml.checkpoints import load_checkpoint
 from app.ml.preprocessing import preprocess_pil
 
+if TYPE_CHECKING:
+    import torch
 
-def pick_device(pref: str) -> torch.device:
+
+def pick_device(pref: str) -> Any:
+    import torch
+
     if pref == "cpu":
         return torch.device("cpu")
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,6 +47,8 @@ class Predictor:
             self._key, self._model, self._meta = None, None, None
 
     def predict(self, rel_path: str, image: Image.Image) -> dict:
+        import torch
+
         with self._lock:
             model, meta = self._ensure(rel_path)
             t0 = time.perf_counter()

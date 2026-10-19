@@ -1,0 +1,27 @@
+.lab-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  flex-shrink: 0;
+}
+
+.lab-header-project { min-width: 0; }
+.lab-header-project > :first-child { flex-shrink: 0; }
+.lab-project-selector { width: 184px; min-width: 80px; }
+.lab-header-modes { justify-self: center; white-space: nowrap; }
+.lab-header-controls { justify-self: end; white-space: nowrap; }
+
+@media (max-width: 1499px) {
+  .lab-header { grid-template-columns: minmax(0, 1fr) auto; padding-block: 8px; }
+  .lab-header-modes { grid-row: 2; grid-column: 1 / -1; max-width: 100%; overflow-x: auto; }
+}
+
+@media (max-width: 640px) {
+  .lab-header-project > :first-child > :last-child { display: none; }
+  .lab-project-selector { width: 140px; }
+  .lab-header-controls > :first-child { display: none; }
+  .lab-header-modes { justify-self: stretch; }
+  .lab-header-modes button { flex-shrink: 0; }
+}

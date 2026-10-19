@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useLabStore } from '@/store/useLabStore'
 import type { Mode, Project } from '@/types/api'
+import './header.css'
 
 export const Header: React.FC = () => {
   const {
@@ -67,9 +68,9 @@ export const Header: React.FC = () => {
   const isCuda = device?.type === 'cuda'
 
   return (
-    <header className="h-14 border-b border-white/10 bg-[#07090e]/95 backdrop-blur px-4 flex items-center justify-between z-30 select-none">
+    <header className="lab-header border-b border-white/10 bg-[#07090e]/95 backdrop-blur px-4 z-30 select-none">
       {/* Brand & Project Selector */}
-      <div className="flex items-center gap-3">
+      <div className="lab-header-project flex items-center gap-3">
         <div className="flex items-center gap-2 pr-3 border-r border-white/10">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
             <BrainCircuit className="w-5 h-5 text-white" />
@@ -98,17 +99,18 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Project Selector */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="lab-project-selector relative" ref={dropdownRef}>
           <button
             onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer ${
+            title={currentProject?.name}
+            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition cursor-pointer ${
               theme === 'light'
                 ? 'bg-white hover:bg-slate-50 border-slate-300 text-slate-800 shadow-sm'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-200'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-cyan-500" />
-            <span className="max-w-[140px] truncate">
+            <Layers className="w-3.5 h-3.5 shrink-0 text-cyan-500" />
+            <span className="min-w-0 flex-1 truncate text-left">
               {currentProject ? currentProject.name : 'Chọn dự án...'}
             </span>
             <span className={theme === 'light' ? 'text-slate-600 text-[10px]' : 'text-slate-500 text-[10px]'}>▼</span>
@@ -191,7 +193,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Center: Learning Mode Selector */}
-      <div className={`flex items-center p-1 rounded-xl border ${theme === 'light' ? 'bg-slate-100/90 border-slate-200' : 'bg-white/5 border-white/10'}`}>
+      <div className={`lab-header-modes flex items-center p-1 rounded-xl border ${theme === 'light' ? 'bg-slate-100/90 border-slate-200' : 'bg-white/5 border-white/10'}`}>
         {modes.map((m) => {
           const active = config.mode === m.id
           return (
@@ -225,7 +227,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Right Controls: Device & Theme Switch */}
-      <div className="flex items-center gap-2.5">
+      <div className="lab-header-controls flex items-center gap-2.5">
         {/* Device Indicator */}
         <div
           title={

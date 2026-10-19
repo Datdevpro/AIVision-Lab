@@ -268,7 +268,7 @@ export const useLabStore = create<LabState>((set, get) => ({
     set({ errorBanner: null })
     try {
       const job = await api.startTraining(proj.id, get().config, experimentName)
-      set({ activeJob: job, isTraining: true, activeBottomTab: 'metrics', hasAttemptedTraining: false })
+      set({ activeJob: job, isTraining: true, activeBottomTab: 'architecture', hasAttemptedTraining: false })
       get().connectWebSocket(job.id)
     } catch (e: any) {
       set({ hasAttemptedTraining: true, errorBanner: e.message || 'Không thể bắt đầu huấn luyện' })

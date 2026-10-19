@@ -7,9 +7,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import torch
+from typing import TYPE_CHECKING, Any
+
 from PIL import Image, ImageOps
-from torchvision import transforms as T
+
+if TYPE_CHECKING:
+    import torch
+    from torchvision import transforms as T
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -26,13 +30,17 @@ def load_rgb(path: str | Path, size: int | None = None) -> Image.Image:
         return im
 
 
-def build_eval_transform() -> T.Compose:
+def build_eval_transform() -> Any:
     """Deterministic transform (images are pre-resized to the model's input size)."""
+    from torchvision import transforms as T
+
     return T.Compose([T.ToTensor(), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)])
 
 
-def build_train_transform(augment: bool) -> T.Compose:
+def build_train_transform(augment: bool) -> Any:
     """Training transform. Augmentations: horizontal flip, small rotation, moderate colour jitter."""
+    from torchvision import transforms as T
+
     steps: list = []
     if augment:
         steps += [

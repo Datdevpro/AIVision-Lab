@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import torch
-
-from app.ml.architectures import VisionModel, build_model
 from app.ml.preprocessing import preprocessing_spec
 from app.schemas.training_config import ResolvedConfig
+
+if TYPE_CHECKING:
+    import torch
+    from app.ml.architectures import VisionModel
 
 FORMAT_VERSION = 1
 
@@ -48,7 +49,9 @@ def make_metadata(cfg: ResolvedConfig, class_names: list[str], extra: dict[str, 
     return meta
 
 
-def save_checkpoint(path: Path, model: VisionModel, metadata: dict[str, Any]) -> None:
+def save_checkpoint(path: Path, model: Any, metadata: dict[str, Any]) -> None:
+    import torch
+
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
@@ -72,7 +75,10 @@ def metadata_to_config(meta: dict[str, Any]) -> ResolvedConfig:
         raise CheckpointError(f"Metadata checkpoint không hợp lệ: {exc}") from exc
 
 
-def load_checkpoint(path: str | Path, root: Path, device: str | torch.device = "cpu") -> tuple[VisionModel, dict[str, Any]]:
+def load_checkpoint(path: str | Path, root: Path, device: Any = "cpu") -> tuple[Any, dict[str, Any]]:
+    import torch
+    from app.ml.architectures import build_model
+
     file = resolve_managed_path(path, root)
     if not file.is_file():
         raise CheckpointError("Không tìm thấy file checkpoint.")
