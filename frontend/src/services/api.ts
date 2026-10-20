@@ -13,44 +13,18 @@ import type {
   TrainingConfigState,
   TrainingJob,
 } from '@/types/api'
-import { ApiError } from './api-error'
+import { requestJson } from './api-request'
 
 const API_BASE = '/api'
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      Accept: 'application/json',
-      ...options.headers,
-    },
-  })
-
-  if (!res.ok) {
-    let errBody: unknown
-    try {
-      errBody = await res.json()
-    } catch {
-      // not json
-    }
-    const error = new ApiError(res.status, res.statusText, errBody)
-    console.error(`[API] ${options.method ?? 'GET'} ${API_BASE}${endpoint} -> ${res.status}`, error)
-    throw error
-  }
-
-  // Handle 204 No Content
-  if (res.status === 204) {
-    return {} as T
-  }
-
-  return res.json()
-}
+const request = <T>(endpoint: string, options: RequestInit = {}, timeoutMs?: number) =>
+  requestJson<T>(`${API_BASE}${endpoint}`, options, timeoutMs)
 
 export const api = {
   // System
-  getCapabilities: () => request<SystemCapabilities>('/system/capabilities'),
+  getCapabilities: () => request<SystemCapabilities>('/system/capabilities', {}, 30_000),
   getParameters: () => request<{ parameters: ParameterSpec[] }>('/system/parameters'),
-  prefetchWeights: () => request<{ pretrained_weights_cached: boolean }>('/system/prefetch-weights', { method: 'POST' }),
+  prefetchWeights: () => request<{ pretrained_weights_cached: boolean }>('/system/prefetch-weights', { method: 'POST' }, 120_000),
 
   // Projects
   listProjects: () => request<Project[]>('/projects'),
@@ -106,7 +80,7 @@ export const api = {
       {
         method: 'POST',
         body: formData,
-      }
+      }, 120_000
     )
   },
   deleteImage: (imageId: string) => request<void>(`/images/${imageId}`, { method: 'DELETE' }),

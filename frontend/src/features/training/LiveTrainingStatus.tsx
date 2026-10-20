@@ -23,6 +23,9 @@ export const LiveTrainingStatus: React.FC = () => {
     setErrorBanner,
     setHasAttemptedTraining,
     theme,
+    currentProject,
+    paramSpecs,
+    isDatasetLoading,
   } = useLabStore()
 
   const summary = dataset?.summary
@@ -93,7 +96,8 @@ export const LiveTrainingStatus: React.FC = () => {
         ) : (
           <button
             onClick={handleStartTrain}
-            className="w-full py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-300 hover:to-purple-500 text-slate-950 shadow-cyan-500/25 scale-[1.01] hover:scale-[1.02] cursor-pointer"
+            disabled={!currentProject || !paramSpecs.length || isDatasetLoading}
+            className="w-full py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 hover:from-cyan-300 hover:to-purple-500 text-slate-950 shadow-cyan-500/25 scale-[1.01] hover:scale-[1.02] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Flame className="w-4 h-4 text-amber-300 animate-bounce" />
             <span>Bắt đầu huấn luyện mô hình (Train Model)</span>

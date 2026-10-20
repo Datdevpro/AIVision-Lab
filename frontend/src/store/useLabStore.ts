@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api } from '@/services/api'
 import { mergeTrainingConfig } from '@/features/training/training-config'
+import { loadStartupResources } from '@/services/startup'
 import type {
   DatasetResponse,
   EpochMetrics,
@@ -22,12 +23,15 @@ interface LabState {
   // System
   capabilities: SystemCapabilities | null
   paramSpecs: ParameterSpec[]
-  fetchSystem: () => Promise<void>
+  fetchSystem: () => Promise<string[]>
+  initializationStatus: 'loading' | 'ready' | 'error'
+  initializationError: string | null
+  initializeApp: () => Promise<void>
 
   // Project
   currentProject: Project | null
   projects: Project[]
-  loadProjects: () => Promise<void>
+  loadProjects: () => Promise<boolean>
   setCurrentProject: (p: Project) => void
   createProject: (name: string) => Promise<void>
   deleteProject: (id: string) => Promise<void>
@@ -107,20 +111,29 @@ const DEFAULT_CONFIG: TrainingConfigState = {
   conv_filters: [16, 32],
 }
 
+let initializationPromise: Promise<void> | null = null
+
 export const useLabStore = create<LabState>((set, get) => ({
   capabilities: null,
   paramSpecs: [],
-  fetchSystem: async () => {
-    try {
-      const [caps, params] = await Promise.all([
-        api.getCapabilities(),
-        api.getParameters(),
-      ])
-      set({ capabilities: caps, paramSpecs: params.parameters })
-    } catch (e: any) {
-      console.error('Failed to load system info:', e)
-    }
+  initializationStatus: 'loading',
+  initializationError: null,
+  initializeApp: () => {
+    if (initializationPromise) return initializationPromise
+    set({ initializationStatus: 'loading' })
+    initializationPromise = (async () => {
+      const [errors, projectsLoaded] = await Promise.all([get().fetchSystem(), get().loadProjects()])
+      if (!projectsLoaded) errors.push(get().errorBanner ?? 'Không tải được danh sách dự án.')
+      set({ initializationStatus: errors.length ? 'error' : 'ready', initializationError: errors.length ? errors.join('\n') : null })
+      // Job restore is independent of the resources needed to render the workspace.
+      void get().checkActiveJob()
+    })().finally(() => { initializationPromise = null })
+    return initializationPromise
   },
+  fetchSystem: () => loadStartupResources({
+    'Thông tin thiết bị': async () => { set({ capabilities: await api.getCapabilities() }) },
+    'Tham số huấn luyện': async () => { const result = await api.getParameters(); set({ paramSpecs: result.parameters }) },
+  }),
 
   currentProject: null,
   projects: [],
@@ -142,8 +155,11 @@ export const useLabStore = create<LabState>((set, get) => ({
         set({ projects: [created], currentProject: created })
         get().loadDataset()
       }
-    } catch (e: any) {
-      set({ errorBanner: `Không tải được danh sách dự án: ${e.message}` })
+      if (get().errorBanner?.startsWith('Không tải được danh sách dự án:')) set({ errorBanner: null })
+      return true
+    } catch (e) {
+      set({ errorBanner: `Không tải được danh sách dự án: ${e instanceof Error ? e.message : String(e)}` })
+      return false
     }
   },
 

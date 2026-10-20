@@ -246,7 +246,7 @@ export const Header: React.FC = () => {
           }`}
         >
           {isCuda ? <Zap className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> : <Cpu className="w-3.5 h-3.5 text-amber-500" />}
-          <span>{isCuda ? (device?.name?.replace('NVIDIA GeForce ', '') || 'CUDA GPU') : 'CPU Mode'}</span>
+          <span>{!device ? 'Đang kiểm tra thiết bị…' : isCuda ? (device?.name?.replace('NVIDIA GeForce ', '') || 'CUDA GPU') : 'CPU Mode'}</span>
         </div>
 
         {/* Theme Mode Switch (Dark / Light) */}

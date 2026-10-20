@@ -26,7 +26,7 @@ set /a retries=0
 ping 127.0.0.1 -n 2 > nul
 set /a retries+=1
 set http_code=000
-for /f %%c in ('curl -s -o nul -w "%%{http_code}" http://127.0.0.1:8000/api/health 2^>nul') do set http_code=%%c
+for /f %%c in ('curl --connect-timeout 1 --max-time 2 -s -o nul -w "%%{http_code}" http://127.0.0.1:8000/api/health 2^>nul') do set http_code=%%c
 if "!http_code!"=="200" (
     echo    - Backend da san sang sau !retries! giay.
     goto start_frontend

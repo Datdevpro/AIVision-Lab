@@ -38,7 +38,7 @@ export const TrainingControl: React.FC = () => {
         {/* Hyperparameters Section */}
         <div className="space-y-2">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 px-1">
-            Siêu tham số ({visibleSpecs.length} tham số)
+            {paramSpecs.length ? `Siêu tham số (${visibleSpecs.length} tham số)` : 'Đang tải tham số huấn luyện…'}
           </div>
 
           <div className="space-y-2">
