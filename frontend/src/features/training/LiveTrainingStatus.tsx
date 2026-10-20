@@ -109,7 +109,7 @@ export const LiveTrainingStatus: React.FC = () => {
             : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
         }`}>
           <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${theme === 'light' ? 'text-rose-600' : 'text-rose-400'}`} />
-          <span>{errorBanner}</span>
+          <span className="whitespace-pre-line break-words min-w-0">{errorBanner}</span>
         </div>
       )}
 

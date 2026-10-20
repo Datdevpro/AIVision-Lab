@@ -28,11 +28,11 @@ def worker_main(spec: dict[str, Any], queue, cancel_event) -> None:
         except TrainingCancelled:
             emit("cancelled", message="Đã dừng huấn luyện theo yêu cầu.", elapsed_s=time.time() - started)
         except TrainingFailure as exc:
-            emit("error", code=exc.code, message=exc.message)
-    except Exception as exc:  # unexpected: report with a traceback tail for debugging
+            emit("error", code=exc.code, message=exc.message, details=traceback.format_exc())
+    except Exception as exc:  # unexpected: retain the full traceback for terminal diagnostics
         emit(
             "error",
             code="TRAINING_CRASHED",
             message=f"Huấn luyện thất bại: {exc}",
-            details=traceback.format_exc()[-1500:],
+            details=traceback.format_exc(),
         )

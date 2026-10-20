@@ -7,10 +7,12 @@ record when a run succeeds. No ML code lives here (see app.ml.*).
 from __future__ import annotations
 
 import asyncio
+import logging
 import multiprocessing as mp
 import queue as queue_mod
 import threading
 import time
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -28,6 +30,7 @@ from app.workers.training_worker import worker_main
 
 TERMINAL = {"completed", "cancelled", "failed"}
 CANCEL_GRACE_S = 20.0
+logger = logging.getLogger("uvicorn.error.visionlab")
 
 
 @dataclass
@@ -219,7 +222,7 @@ class TrainingManager:
                         "code": "WORKER_DIED", "message": f"Tiến trình huấn luyện thoát bất ngờ (mã {proc.exitcode}). Có thể thiếu RAM/VRAM.",
                     })
         except Exception as exc:  # never let the consumer die silently
-            self._finish(state, "failed", error={"code": "INTERNAL_ERROR", "message": str(exc)})
+            self._finish(state, "failed", error={"code": "INTERNAL_ERROR", "message": str(exc), "details": traceback.format_exc()})
         finally:
             proc.join(timeout=10)
             if proc.is_alive():
@@ -288,6 +291,10 @@ class TrainingManager:
         self._finish(state, "completed", message="Huấn luyện hoàn tất. Checkpoint tốt nhất đã được lưu.")
 
     def _finish(self, state: JobState, status: str, message: str | None = None, error: dict | None = None) -> None:
+        if status == "failed":
+            failure = error or {}
+            logger.error("[TRAINING] job=%s project=%s %s: %s\n%s", state.id, state.project_id,
+                         failure.get("code", "UNKNOWN_ERROR"), failure.get("message", message), failure.get("details") or "")
         state.status = status
         state.message = message or (error or {}).get("message")
         state.error = error

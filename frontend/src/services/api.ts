@@ -13,6 +13,7 @@ import type {
   TrainingConfigState,
   TrainingJob,
 } from '@/types/api'
+import { ApiError } from './api-error'
 
 const API_BASE = '/api'
 
@@ -26,17 +27,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   })
 
   if (!res.ok) {
-    let errBody: any
+    let errBody: unknown
     try {
       errBody = await res.json()
     } catch {
       // not json
     }
-    const msg = errBody?.error?.message || `HTTP error ${res.status}: ${res.statusText}`
-    const error: any = new Error(msg)
-    error.status = res.status
-    error.code = errBody?.error?.code
-    error.details = errBody?.error?.details
+    const error = new ApiError(res.status, res.statusText, errBody)
+    console.error(`[API] ${options.method ?? 'GET'} ${API_BASE}${endpoint} -> ${res.status}`, error)
     throw error
   }
 
