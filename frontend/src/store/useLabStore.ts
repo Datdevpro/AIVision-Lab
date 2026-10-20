@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { api } from '@/services/api'
+import { mergeTrainingConfig } from '@/features/training/training-config'
 import type {
   DatasetResponse,
   EpochMetrics,
@@ -214,7 +215,7 @@ export const useLabStore = create<LabState>((set, get) => ({
   config: DEFAULT_CONFIG,
   paramEstimate: null,
   setMode: (mode: Mode) => {
-    const cfg = { ...get().config, mode }
+    const cfg = mergeTrainingConfig(get().config, { mode })
     if (mode === 'beginner') {
       cfg.dense_layers = 1
       cfg.neurons = 64
@@ -228,7 +229,7 @@ export const useLabStore = create<LabState>((set, get) => ({
   },
 
   updateConfig: (patch: Partial<TrainingConfigState>) => {
-    set((state) => ({ config: { ...state.config, ...patch } }))
+    set((state) => ({ config: mergeTrainingConfig(state.config, patch) }))
     get().fetchEstimate()
   },
 
@@ -265,9 +266,10 @@ export const useLabStore = create<LabState>((set, get) => ({
   startTraining: async (experimentName?: string) => {
     const proj = get().currentProject
     if (!proj) return
-    set({ errorBanner: null })
+    const config = mergeTrainingConfig(get().config, {})
+    set({ config, errorBanner: null })
     try {
-      const job = await api.startTraining(proj.id, get().config, experimentName)
+      const job = await api.startTraining(proj.id, config, experimentName)
       set({ activeJob: job, isTraining: true, activeBottomTab: 'architecture', hasAttemptedTraining: false })
       get().connectWebSocket(job.id)
     } catch (e: any) {

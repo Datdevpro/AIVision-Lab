@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react'
 import { useLabStore } from '@/store/useLabStore'
 import type { ParameterSpec, TrainingConfigState } from '@/types/api'
 import { createNumericControl, formatParameterNumber } from './numeric-control'
+import { mergeTrainingConfig } from './training-config'
 
 interface ParameterControlItemProps {
   spec: ParameterSpec
@@ -12,6 +13,7 @@ export const ParameterControlItem: React.FC<ParameterControlItemProps> = ({ spec
   const { config, updateConfig, setSelectedLessonKey, theme } = useLabStore()
   const value = config[spec.key as keyof TrainingConfigState]
   const numericControl = typeof value === 'number' ? createNumericControl(spec, value) : null
+  const filters = spec.key === 'conv_filters' ? mergeTrainingConfig(config, {}).conv_filters : []
 
   const handleChange = (newVal: string | number | boolean) => {
     updateConfig({ [spec.key]: newVal })
@@ -47,6 +49,7 @@ export const ParameterControlItem: React.FC<ParameterControlItemProps> = ({ spec
         <div className={`font-mono font-bold text-xs ${theme === 'light' ? 'text-sky-700' : 'text-cyan-300'}`}>
           {spec.type === 'bool'
             ? value ? 'BẬT' : 'TẮT'
+            : spec.key === 'conv_filters' ? filters.join(', ')
             : typeof value === 'number'
             ? formatParameterNumber(value)
             : String(value).toUpperCase()}
@@ -96,6 +99,25 @@ export const ParameterControlItem: React.FC<ParameterControlItemProps> = ({ spec
                 </button>
               )
             })}
+          </div>
+        ) : spec.type === 'int_list' && spec.key === 'conv_filters' ? (
+          <div className="grid grid-cols-2 gap-2">
+            {filters.map((filter, index) => (
+              <label key={index} className="flex items-center gap-2 text-[11px]">
+                <span className={theme === 'light' ? 'text-slate-600' : 'text-slate-400'}>Khối {index + 1}</span>
+                <select
+                  aria-label={`Số filter khối ${index + 1}`}
+                  value={filter}
+                  onChange={event => updateConfig({ conv_filters: filters.map((value, i) => i === index ? Number(event.target.value) : value) })}
+                  className={`min-w-0 flex-1 rounded-lg border px-2 py-1 text-xs ${theme === 'light' ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#0d1420] border-white/15 text-slate-200'}`}
+                >
+                  {spec.options?.map(option => {
+                    const number = typeof option === 'number' ? option : Number(option.value)
+                    return <option key={number} value={number}>{number}</option>
+                  })}
+                </select>
+              </label>
+            ))}
           </div>
         ) : spec.type === 'bool' ? (
           <div className="flex items-center gap-2">
