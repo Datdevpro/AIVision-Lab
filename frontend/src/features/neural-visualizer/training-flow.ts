@@ -5,14 +5,21 @@ export const trainingStatusLabels: Record<TrainingJob['status'], string> = {
   validating: 'Đang kiểm tra', completed: 'Đã hoàn tất', cancelled: 'Đã hủy', failed: 'Huấn luyện thất bại',
 }
 
-// One illustrative sweep, independent of the backend's batch execution speed.
-export function getFlowFrame(step: number, layerCount: number, backward: boolean, backwardStart = 0) {
-  const edges = layerCount - 1
-  const cycle = edges + (backward ? edges - backwardStart : 0)
-  const position = step % cycle
-  return position < edges
-    ? { edge: position, reverse: false }
-    : { edge: edges - 1 - (position - edges), reverse: true }
+export type FlowFrame = { edge: number; reverse: boolean }
+
+// Keep the current edge when training/validation changes. Recomputing a modulo
+// against different cycle lengths can skip the final connection entirely.
+export function advanceFlowFrame(frame: FlowFrame, layerCount: number, backward: boolean, backwardStart = 0): FlowFrame {
+  const lastEdge = layerCount - 2
+  if (frame.reverse) {
+    return backward && frame.edge > backwardStart
+      ? { edge: frame.edge - 1, reverse: true }
+      : { edge: 0, reverse: false }
+  }
+  if (frame.edge < lastEdge) return { edge: frame.edge + 1, reverse: false }
+  return backward
+    ? { edge: lastEdge, reverse: true }
+    : { edge: 0, reverse: false }
 }
 
 export function isFlowRunning(status: TrainingJob['status'] | undefined) {

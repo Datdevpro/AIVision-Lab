@@ -1,9 +1,9 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useEffectEvent, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { HelpCircle, Maximize2, Minimize2, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react'
 import { useLabStore } from '@/store/useLabStore'
 import './network-visualizer.css'
-import { getFlowFrame, isFlowRunning, trainingStatusLabels } from './training-flow'
+import { advanceFlowFrame, isFlowRunning, trainingStatusLabels, type FlowFrame } from './training-flow'
 
 type Layer = { id: string; title: string; subtitle: string; count: number; kind: 'input' | 'feature' | 'dense' | 'output' }
 type Neuron = { id: string; layer: number; index: number; x: number; y: number }
@@ -28,7 +28,7 @@ export function NetworkVisualizer() {
   const [source, setSource] = useState('auto')
   const [expanded, setExpanded] = useState(false)
   const [playing, setPlaying] = useState(false)
-  const [phase, setPhase] = useState(0)
+  const [flow, setFlow] = useState<FlowFrame>({ edge: 0, reverse: false })
   const [pausedJobId, setPausedJobId] = useState<string | null>(null)
   const [selection, setSelection] = useState<string | null>(null)
   const [hovered, setHovered] = useState<string | null>(null)
@@ -70,18 +70,20 @@ export function NetworkVisualizer() {
   const prediction = experiment && lastPrediction?.experiment_id === experiment.id ? lastPrediction : null
   const counts = experiment?.param_counts ?? job?.param_counts
   const running = job ? isFlowRunning(job.status) && pausedJobId !== job.id : playing
-  const flow = getFlowFrame(phase, layers.length, job?.status === 'training', custom ? 0 : 1)
   const progress = Math.min(1, Math.max(0, job?.progress ?? 0))
   const currentEpoch = Math.max(job?.batch?.epoch ?? 0, latest?.epoch ?? 0)
   const useBatchMetrics = job?.batch && (job.status === 'training' || job.batch.epoch > (latest?.epoch ?? 0))
   const liveLoss = useBatchMetrics ? job?.batch?.loss : latest?.train_loss
   const liveAccuracy = useBatchMetrics ? job?.batch?.accuracy : latest?.train_accuracy
 
+  const advanceFlow = useEffectEvent(() => {
+    setFlow(frame => advanceFlowFrame(frame, layers.length, job?.status === 'training', custom ? 0 : 1))
+  })
   useEffect(() => {
     if (!running) return
-    const timer = window.setInterval(() => setPhase(p => p + 1), 500)
+    const timer = window.setInterval(() => advanceFlow(), 500)
     return () => window.clearInterval(timer)
-  }, [running, job?.id, job?.status, layers.length])
+  }, [running, job?.id, layers.length])
   useEffect(() => {
     if (!expanded) return
     const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setExpanded(false) }
@@ -95,14 +97,14 @@ export function NetworkVisualizer() {
     <div className="nv-toolbar">
       <div><span className="nv-eyebrow">KHÁM PHÁ KIẾN TRÚC</span><h3>Network Playground <span>Thấy cách các lớp kết nối</span></h3></div>
       <div className="nv-actions">
-        <select aria-label="Nguồn cấu hình mạng" value={source === 'auto' ? source : viewSource} onChange={e => { setSource(e.target.value); setSelection(null); setPlaying(false); setPhase(0) }}>
+        <select aria-label="Nguồn cấu hình mạng" value={source === 'auto' ? source : viewSource} onChange={e => { setSource(e.target.value); setSelection(null); setPlaying(false); setFlow({ edge: 0, reverse: false }) }}>
           <option value="auto">Tự động theo phiên huấn luyện</option>
           <option value="draft">Cấu hình đang thiết kế</option>
           {activeJob && <option value="job">Phiên huấn luyện hiện tại</option>}
           {activeExperiment && <option value="experiment">Mô hình: {activeExperiment.name}</option>}
         </select>
         <button className={running ? 'nv-primary nv-active' : 'nv-primary'} disabled={!!job && !isFlowRunning(job.status)} onClick={() => job ? setPausedJobId(running ? job.id : null) : setPlaying(!playing)}>{running ? <Pause size={14} /> : <Play size={14} />}{running ? 'Tạm dừng hiệu ứng' : job ? 'Tiếp tục hiệu ứng' : 'Luồng tín hiệu'}</button>
-        <button title="Đặt lại mô phỏng và lựa chọn" aria-label="Đặt lại mô phỏng và lựa chọn" onClick={() => { setPlaying(false); setPausedJobId(job?.id ?? null); setPhase(0); setSelection(null); setHovered(null) }}><RotateCcw size={15} /></button>
+        <button title="Đặt lại mô phỏng và lựa chọn" aria-label="Đặt lại mô phỏng và lựa chọn" onClick={() => { setPlaying(false); setPausedJobId(job?.id ?? null); setFlow({ edge: 0, reverse: false }); setSelection(null); setHovered(null) }}><RotateCcw size={15} /></button>
         <button title={expanded ? 'Thu nhỏ (Esc)' : 'Mở rộng sơ đồ'} aria-label={expanded ? 'Thu nhỏ sơ đồ' : 'Mở rộng sơ đồ'} aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}</button>
       </div>
     </div>
@@ -138,7 +140,7 @@ export function NetworkVisualizer() {
               const weight = illustrativeWeight(a.index, b.index, li)
               const related = !focused || a.id === focused || b.id === focused
               const active = running && flow.edge === li
-              return <path key={`${a.id}-${b.id}`} d={`M${a.x + 13},${a.y} C${a.x + 85},${a.y} ${b.x - 85},${b.y} ${b.x - 13},${b.y}`} fill="none" stroke={weight > 0 ? BLUE : ORANGE} strokeWidth={0.6 + Math.abs(weight) * (active ? 2 : 0.8)} opacity={related ? (focused || active ? 0.85 : 0.16) : 0.035} strokeDasharray={active ? '6 5' : undefined} className={active ? `nv-flow ${flow.reverse ? 'nv-flow-reverse' : ''}` : ''} />
+              return <path key={`${a.id}-${b.id}`} d={`M${a.x + 13},${a.y} C${a.x + 85},${a.y} ${b.x - 85},${b.y} ${b.x - 13},${b.y}`} fill="none" stroke={weight > 0 ? BLUE : ORANGE} strokeWidth={0.6 + Math.abs(weight) * (active ? 2 : 0.8)} opacity={active || (focused && related) ? 0.85 : related ? 0.16 : 0.035} strokeDasharray={active ? '6 5' : undefined} className={active ? `nv-flow ${flow.reverse ? 'nv-flow-reverse' : ''}` : ''} />
             })))}
             {graph.flat().map(node => {
               const layer = layers[node.layer]
