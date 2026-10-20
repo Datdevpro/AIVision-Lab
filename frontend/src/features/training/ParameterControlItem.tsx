@@ -1,7 +1,8 @@
 import React from 'react'
-import { BookOpen, HelpCircle } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { useLabStore } from '@/store/useLabStore'
-import type { ParameterSpec } from '@/types/api'
+import type { ParameterSpec, TrainingConfigState } from '@/types/api'
+import { createNumericControl, formatParameterNumber } from './numeric-control'
 
 interface ParameterControlItemProps {
   spec: ParameterSpec
@@ -9,9 +10,10 @@ interface ParameterControlItemProps {
 
 export const ParameterControlItem: React.FC<ParameterControlItemProps> = ({ spec }) => {
   const { config, updateConfig, setSelectedLessonKey, theme } = useLabStore()
-  const value = (config as any)[spec.key]
+  const value = config[spec.key as keyof TrainingConfigState]
+  const numericControl = typeof value === 'number' ? createNumericControl(spec, value) : null
 
-  const handleChange = (newVal: any) => {
+  const handleChange = (newVal: string | number | boolean) => {
     updateConfig({ [spec.key]: newVal })
   }
 
@@ -46,28 +48,24 @@ export const ParameterControlItem: React.FC<ParameterControlItemProps> = ({ spec
           {spec.type === 'bool'
             ? value ? 'BẬT' : 'TẮT'
             : typeof value === 'number'
-            ? spec.step && spec.step < 1
-              ? value.toFixed(3).replace(/\.?0+$/, '')
-              : value
+            ? formatParameterNumber(value)
             : String(value).toUpperCase()}
         </div>
       </div>
 
       {/* Control Input */}
       <div>
-        {spec.type === 'int' || spec.type === 'float' ? (
+        {(spec.type === 'int' || spec.type === 'float') && numericControl ? (
           <div className="flex items-center gap-2">
             <input
               type="range"
-              min={spec.min}
-              max={spec.max}
-              step={spec.step || (spec.type === 'float' ? 0.001 : 1)}
-              value={value}
-              onChange={(e) =>
-                handleChange(
-                  spec.type === 'int' ? parseInt(e.target.value) : parseFloat(e.target.value)
-                )
-              }
+              aria-label={spec.name_vi}
+              aria-valuetext={typeof value === 'number' ? formatParameterNumber(value) : undefined}
+              min={numericControl.min}
+              max={numericControl.max}
+              step={numericControl.step}
+              value={numericControl.value}
+              onChange={(e) => handleChange(numericControl.fromSlider(Number(e.target.value)))}
               className={`w-full accent-cyan-500 h-2 rounded-lg cursor-pointer ${
                 theme === 'light' ? 'bg-slate-200' : 'bg-white/10'
               }`}
@@ -75,7 +73,7 @@ export const ParameterControlItem: React.FC<ParameterControlItemProps> = ({ spec
           </div>
         ) : spec.type === 'enum' ? (
           <div className="grid grid-cols-2 gap-1.5">
-            {(spec.options as any[])?.map((opt: any) => {
+            {spec.options?.map((opt) => {
               const optVal = typeof opt === 'object' ? opt.value : opt
               const optLabel = typeof opt === 'object' ? opt.label : opt
               const active = value === optVal
