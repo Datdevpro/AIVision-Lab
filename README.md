@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/assets/vision-lab-ai-logo.png" alt="Vision Lab AI — biểu tượng con mắt kết hợp mạng neuron" width="200" height="200" />
+
 # Vision Lab AI
 
 **Phòng thí nghiệm thị giác máy tính cho lớp học.**
