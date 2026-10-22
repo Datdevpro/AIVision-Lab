@@ -11,23 +11,23 @@ import {
   YAxis,
 } from 'recharts'
 import { useLabStore } from '@/store/useLabStore'
+import type { EpochMetrics } from '@/types/api'
 
-export const TrainingMetricsChart: React.FC = () => {
-  const { activeJob, activeExperiment, theme } = useLabStore()
+type TrainingMetricsChartProps = {
+  epochs: EpochMetrics[]
+  bestEpoch?: number
+}
 
-  // Use active job's live epochs if training, or the active experiment's stored epochs
-  const epochs = activeJob?.epochs && activeJob.epochs.length > 0
-    ? activeJob.epochs
-    : activeExperiment?.epoch_metrics || []
-
-  const bestEpoch = activeExperiment?.best_checkpoint?.epoch
+export const TrainingMetricsChart: React.FC<TrainingMetricsChartProps> = ({ epochs, bestEpoch }) => {
+  const theme = useLabStore(state => state.theme)
 
   if (!epochs || epochs.length === 0) {
     return (
-      <div className={`h-64 flex flex-col items-center justify-center text-xs gap-2 ${
+      <div className={`h-full min-h-[320px] flex flex-col items-center justify-center px-8 text-center text-xs gap-2 ${
         theme === 'light' ? 'text-slate-600 font-medium' : 'text-slate-500'
       }`}>
-        <span>Chưa có dữ liệu huấn luyện. Hãy bắt đầu huấn luyện để quan sát các đường cong hàm mất mát (Loss) và độ chính xác (Accuracy).</span>
+        <strong>Biểu đồ huấn luyện</strong>
+        <span>Chưa có dữ liệu epoch. Bắt đầu huấn luyện hoặc chọn một mô hình đã lưu để xem Loss và Accuracy tại đây.</span>
       </div>
     )
   }
@@ -42,20 +42,20 @@ export const TrainingMetricsChart: React.FC = () => {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 h-full p-2">
+    <div className="grid grid-cols-1 grid-rows-2 gap-3 h-full min-h-[360px]">
       {/* Loss Chart */}
-      <div className={`rounded-xl border p-3 flex flex-col ${
+      <div className={`rounded-xl border p-3 flex flex-col min-h-0 min-w-0 ${
         theme === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0c1019] border-white/10'
       }`}>
-        <div className="flex items-center justify-between text-xs mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs mb-2">
           <span className={`font-semibold ${theme === 'light' ? 'text-slate-800' : 'text-slate-200'}`}>
-            Đường cong Hàm Mất mát (Loss Curve)
+            Hàm mất mát (Loss)
           </span>
           <span className={`text-[10px] font-mono ${theme === 'light' ? 'text-slate-500 font-semibold' : 'text-slate-400'}`}>
             Giá trị càng thấp càng tốt
           </span>
         </div>
-        <div className="flex-1 w-full min-h-[220px]">
+        <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={epochs} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.05)'} />
@@ -78,7 +78,7 @@ export const TrainingMetricsChart: React.FC = () => {
                   x={bestEpoch}
                   stroke="#10b981"
                   strokeDasharray="4 4"
-                  label={{ value: `Best Ep ${bestEpoch}`, fill: '#059669', fontSize: 10 }}
+                  label={{ value: `Best Ep ${bestEpoch}`, position: 'insideTopLeft', fill: '#059669', fontSize: 10 }}
                 />
               )}
               <Line
@@ -105,18 +105,18 @@ export const TrainingMetricsChart: React.FC = () => {
       </div>
 
       {/* Accuracy Chart */}
-      <div className={`rounded-xl border p-3 flex flex-col ${
+      <div className={`rounded-xl border p-3 flex flex-col min-h-0 min-w-0 ${
         theme === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0c1019] border-white/10'
       }`}>
-        <div className="flex items-center justify-between text-xs mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs mb-2">
           <span className={`font-semibold ${theme === 'light' ? 'text-slate-800' : 'text-slate-200'}`}>
-            Độ chính xác (Accuracy Curve)
+            Độ chính xác (Accuracy)
           </span>
           <span className={`text-[10px] font-mono ${theme === 'light' ? 'text-slate-500 font-semibold' : 'text-slate-400'}`}>
-            0% → 100% (Càng cao càng tốt)
+            Càng cao càng tốt
           </span>
         </div>
-        <div className="flex-1 w-full min-h-[220px]">
+        <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={epochs} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.05)'} />
@@ -143,7 +143,7 @@ export const TrainingMetricsChart: React.FC = () => {
                   x={bestEpoch}
                   stroke="#10b981"
                   strokeDasharray="4 4"
-                  label={{ value: `Best Ep ${bestEpoch}`, fill: '#059669', fontSize: 10 }}
+                  label={{ value: `Best Ep ${bestEpoch}`, position: 'insideTopLeft', fill: '#059669', fontSize: 10 }}
                 />
               )}
               <Line

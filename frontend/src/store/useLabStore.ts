@@ -17,7 +17,8 @@ import type {
   TrainingJob,
 } from '@/types/api'
 
-export type BottomTab = 'metrics' | 'architecture' | 'evaluation' | 'experiments' | 'insights' | 'lessons'
+export type BottomTab = 'architecture' | 'evaluation' | 'experiments' | 'insights' | 'lessons'
+export type NetworkSource = 'auto' | 'draft' | 'job' | 'experiment'
 
 interface LabState {
   // System
@@ -80,6 +81,8 @@ interface LabState {
   // UI state
   activeBottomTab: BottomTab
   setActiveBottomTab: (tab: BottomTab) => void
+  networkSource: NetworkSource
+  setNetworkSource: (source: NetworkSource) => void
   selectedLessonKey: string | null
   setSelectedLessonKey: (key: string | null) => void
   errorBanner: string | null
@@ -240,12 +243,15 @@ export const useLabStore = create<LabState>((set, get) => ({
       cfg.optimizer = 'adam'
       cfg.activation = 'relu'
     }
-    set({ config: cfg })
+    set(state => ({ config: cfg, networkSource: state.isTraining ? state.networkSource : 'draft' }))
     get().fetchEstimate()
   },
 
   updateConfig: (patch: Partial<TrainingConfigState>) => {
-    set((state) => ({ config: mergeTrainingConfig(state.config, patch) }))
+    set((state) => ({
+      config: mergeTrainingConfig(state.config, patch),
+      networkSource: state.isTraining ? state.networkSource : 'draft',
+    }))
     get().fetchEstimate()
   },
 
@@ -271,7 +277,7 @@ export const useLabStore = create<LabState>((set, get) => ({
     try {
       const res = await api.getActiveJob()
       if (res.job) {
-        set({ activeJob: res.job, isTraining: true, activeBottomTab: 'metrics' })
+        set({ activeJob: res.job, isTraining: true, activeBottomTab: 'architecture', networkSource: 'auto' })
         get().connectWebSocket(res.job.id)
       }
     } catch (e) {
@@ -286,7 +292,7 @@ export const useLabStore = create<LabState>((set, get) => ({
     set({ config, errorBanner: null })
     try {
       const job = await api.startTraining(proj.id, config, experimentName)
-      set({ activeJob: job, isTraining: true, activeBottomTab: 'architecture', hasAttemptedTraining: false })
+      set({ activeJob: job, isTraining: true, activeBottomTab: 'architecture', networkSource: 'auto', hasAttemptedTraining: false })
       get().connectWebSocket(job.id)
     } catch (e: any) {
       set({ hasAttemptedTraining: true, errorBanner: e.message || 'Không thể bắt đầu huấn luyện' })
@@ -475,8 +481,10 @@ export const useLabStore = create<LabState>((set, get) => ({
     }
   },
 
-  activeBottomTab: 'metrics',
+  activeBottomTab: 'architecture',
   setActiveBottomTab: (tab: BottomTab) => set({ activeBottomTab: tab }),
+  networkSource: 'auto',
+  setNetworkSource: (source: NetworkSource) => set({ networkSource: source }),
   selectedLessonKey: null,
   setSelectedLessonKey: (key: string | null) => set({ selectedLessonKey: key }),
   errorBanner: null,
