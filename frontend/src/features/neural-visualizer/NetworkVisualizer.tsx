@@ -115,8 +115,7 @@ export function NetworkVisualizer() {
         <span>Train loss: {liveLoss?.toFixed(4) ?? '—'}</span><span>Train accuracy: {liveAccuracy == null ? '—' : `${(liveAccuracy * 100).toFixed(1)}%`}</span>
         {latest && <><span>Val loss: {latest.val_loss.toFixed(4)}</span><span>Val accuracy: {(latest.val_accuracy * 100).toFixed(1)}%</span></>}
       </div>
-      <p>{job.error?.message ?? job.message ?? trainingStatusLabels[job.status]}</p>
-      <small>{running ? 'Sóng sáng lướt từ trái sang phải trên các kết nối.' : isFlowRunning(job.status) ? 'Hiệu ứng đang tạm dừng; huấn luyện vẫn tiếp tục.' : 'Hiệu ứng dừng theo trạng thái phiên huấn luyện.'} Tiến độ và chỉ số là dữ liệu thực; chuyển động là minh họa.</small>
+      {job.status === 'failed' && <p role="alert">{job.error?.message ?? job.message ?? trainingStatusLabels.failed}</p>}
     </div>}
     <div className="nv-configbar">
       <span className="nv-config-label">ĐẦU PHÂN LOẠI</span>
@@ -131,7 +130,7 @@ export function NetworkVisualizer() {
     <div className="nv-workspace">
       <div className="nv-network">
         <div className="nv-graph-scroll">
-          <svg className="nv-graph" viewBox={`0 0 ${width} 360`} preserveAspectRatio="xMinYMid meet" style={{ minWidth: layers.length * 145 }} role="group" aria-label="Sơ đồ các neuron và kết nối minh họa">
+          <svg className="nv-graph" viewBox={`0 0 ${width} 360`} preserveAspectRatio="xMidYMid meet" style={{ minWidth: layers.length * 145 }} role="group" aria-label="Sơ đồ các neuron và kết nối minh họa">
             <defs>
               {graph.flat().map(node => <linearGradient key={node.id} id={`${uid}-${node.id}`} x1="0" y1="0" x2={node.index % 2 ? '0' : '1'} y2={node.index % 2 ? '1' : '0'}><stop offset="0%" stopColor={ORANGE} /><stop offset={`${30 + node.index * 8}%`} stopColor="#f4f1e9" /><stop offset="100%" stopColor={BLUE} /></linearGradient>)}
               {running && showConnections && <>
