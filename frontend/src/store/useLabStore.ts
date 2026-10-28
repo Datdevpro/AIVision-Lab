@@ -42,6 +42,9 @@ interface LabState {
   selectedClassId: string | null
   isDatasetLoading: boolean
   loadDataset: () => Promise<void>
+  isSampleImporting: boolean
+  setSampleImporting: (importing: boolean) => void
+  activateImportedProject: (projectId: string) => Promise<void>
   setSelectedClassId: (id: string | null) => void
 
   // Training Config
@@ -167,7 +170,7 @@ export const useLabStore = create<LabState>((set, get) => ({
   },
 
   setCurrentProject: (p: Project) => {
-    set({ currentProject: p, activeExperiment: null, lastPrediction: null, hasAttemptedTraining: false })
+    set({ currentProject: p, dataset: null, selectedClassId: null, activeExperiment: null, lastPrediction: null, hasAttemptedTraining: false })
     get().loadDataset()
     get().loadExperiments()
   },
@@ -207,6 +210,21 @@ export const useLabStore = create<LabState>((set, get) => ({
   dataset: null,
   selectedClassId: null,
   isDatasetLoading: false,
+  isSampleImporting: false,
+  setSampleImporting: (importing: boolean) => set({ isSampleImporting: importing }),
+  activateImportedProject: async (projectId: string) => {
+    const config = mergeTrainingConfig(get().config, { split_strategy: 'random' })
+    const [project, projects, dataset] = await Promise.all([
+      api.getProject(projectId), api.listProjects(),
+      api.getDataset(projectId, config.split_strategy, config.val_split, config.seed),
+    ])
+    get().disconnectWebSocket()
+    set({ currentProject: project, projects, dataset, config, selectedClassId: dataset.classes[0]?.id ?? null,
+      activeJob: null, isTraining: false,
+      activeExperiment: null, experiments: [], lastPrediction: null, feedbackStats: null,
+      hasAttemptedTraining: false, errorBanner: null, isDatasetLoading: false, networkSource: 'draft' })
+    void get().fetchEstimate()
+  },
   loadDataset: async () => {
     const proj = get().currentProject
     if (!proj) return
@@ -219,6 +237,7 @@ export const useLabStore = create<LabState>((set, get) => ({
         cfg.val_split,
         cfg.seed
       )
+      if (get().currentProject?.id !== proj.id) return
       set({ dataset: data, isDatasetLoading: false })
       if (!get().selectedClassId && data.classes.length > 0) {
         set({ selectedClassId: data.classes[0].id })
@@ -286,6 +305,7 @@ export const useLabStore = create<LabState>((set, get) => ({
   },
 
   startTraining: async (experimentName?: string) => {
+    if (get().isSampleImporting) return
     const proj = get().currentProject
     if (!proj) return
     const config = mergeTrainingConfig(get().config, {})

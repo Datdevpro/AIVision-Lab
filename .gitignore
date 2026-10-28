@@ -27,6 +27,7 @@ backend/data/checkpoints/*
 !backend/data/checkpoints/.gitkeep
 backend/data/exports/*
 !backend/data/exports/.gitkeep
+backend/data/sample_datasets/
 
 # Node / Frontend
 frontend/node_modules/

@@ -23,7 +23,7 @@ Vision Lab AI giúp học sinh và giáo viên thực hành toàn bộ quy trìn
 
 ## Tính năng
 
-- **Dataset Studio:** quản lý dự án và lớp ảnh, upload hoặc chụp webcam, chia tập train/validation và cảnh báo vấn đề chất lượng dữ liệu.
+- **Dataset Studio:** quản lý dự án và lớp ảnh, upload hoặc chụp webcam, chọn dataset mẫu Flower Photos, chia tập train/validation và cảnh báo vấn đề chất lượng dữ liệu.
 - **Training thực:** tùy chỉnh siêu tham số, bật augmentation, theo dõi batch/epoch qua WebSocket và hủy phiên đang chạy.
 - **Network Playground:** sơ đồ neuron tương tác, hiệu ứng lan truyền xuôi/ngược đồng bộ với trạng thái training và các chỉ số thực.
 - **Live Inference:** thử ảnh tải lên hoặc webcam với mô hình đã huấn luyện, xem xác suất theo lớp và ghi nhận phản hồi dự đoán.
@@ -105,6 +105,12 @@ Lần đầu sử dụng MobileNetV3-Small cần tải trọng số pretrained. 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/system/prefetch-weights
 ```
+
+Để thực hành với dữ liệu có sẵn, bấm **Chọn dataset mẫu** trong Dataset Studio, chọn 2–5 loại hoa và số ảnh mỗi lớp (20–500, tổng không quá giới hạn dự án), rồi bấm **Tạo dự án từ dataset**. Flower Photos luôn được import vào một dự án mới; các dự án hiện có được giữ nguyên. Ảnh mẫu vẫn có thể xóa, đổi lớp và bổ sung bằng upload/webcam. Ứng dụng lấy mẫu cân bằng theo seed, chia train/validation bằng chiến lược random và cấu hình huấn luyện hiện tại.
+
+Lần đầu cần Internet để tải bộ Flower Photos gốc khoảng 218 MiB; backend kiểm tra SHA-256 và lưu cache tại `backend/data/sample_datasets/flowers` (hoặc bên trong `VISIONLAB_DATA_DIR`). Những lần sau dùng cache offline. Để chuẩn bị máy khác, sao chép toàn bộ thư mục cache này vào cùng vị trí trước buổi học; hoặc chép archive chính thức `flower_photos.tgz` vào thư mục đó để ứng dụng kiểm tra và giải nén khi import. MobileNet vẫn cần trọng số pretrained đã tải sẵn để huấn luyện offline. Tiến độ import chạy nền; có thể đóng hộp thoại và mở lại, nhưng không khởi động lại backend khi đang import.
+
+Dataset gốc: [Flower Photos của TensorFlow](https://www.tensorflow.org/tutorials/load_data/images), ảnh có giấy phép CC BY 2.0. Thông tin tác giả được giữ trong mỗi dự án và tải qua **Thông tin nguồn → Bản quyền ảnh**. Năm ảnh xem trước đi kèm ứng dụng có thông tin tác giả tại `frontend/public/datasets/flowers/LICENSE.txt`.
 
 ## Kiến trúc
 

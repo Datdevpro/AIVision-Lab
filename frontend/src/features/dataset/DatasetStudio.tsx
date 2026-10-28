@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
-  AlertCircle,
+  BookOpen,
   Database,
-  Layers,
+  Flower2,
   Plus,
   RefreshCw,
   Trash2,
@@ -11,6 +11,7 @@ import { api } from '@/services/api'
 import { useLabStore } from '@/store/useLabStore'
 import { ClassCard } from './ClassCard'
 import { DatasetWarningsBanner } from './DatasetWarningsBanner'
+import { SampleDatasetLibrary } from './SampleDatasetLibrary'
 
 export const DatasetStudio: React.FC = () => {
   const {
@@ -21,13 +22,17 @@ export const DatasetStudio: React.FC = () => {
     setErrorBanner,
     hasAttemptedTraining,
     theme,
+    isSampleImporting,
   } = useLabStore()
 
   const [isCreatingClass, setIsCreatingClass] = useState(false)
+  const [showLibrary, setShowLibrary] = useState(false)
+  const closeLibrary = useCallback(() => setShowLibrary(false), [])
 
   const classes = dataset?.classes || []
   const summary = dataset?.summary
   const totalImages = summary?.total_images || 0
+  const sampleSource = dataset?.sample_source
 
   const generateNextClassName = () => {
     // Tên lớp mới sẽ có số thứ tự bằng tổng số lớp hiện có + 1, không phụ thuộc vào việc các lớp trước đó đã đổi tên hay chưa
@@ -112,6 +117,25 @@ export const DatasetStudio: React.FC = () => {
           </div>
         </div>
 
+        {sampleSource && (
+          <div className={`rounded-xl border p-3 text-xs ${theme === 'light' ? 'bg-emerald-50 border-emerald-200' : 'bg-emerald-500/[0.07] border-emerald-400/20'}`}>
+            <div className="flex items-center gap-2 font-bold"><Flower2 className="w-4 h-4 text-emerald-500" />{sampleSource.name}</div>
+            <p className={`text-[10px] mt-1 ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>Dataset mẫu · Đã nhập {sampleSource.imported_images} ảnh / {sampleSource.class_ids.length} lớp</p>
+            <details className="mt-2 text-[10px]">
+              <summary className={`cursor-pointer font-semibold ${theme === 'light' ? 'text-emerald-700' : 'text-emerald-300'}`}>Thông tin nguồn</summary>
+              <p className="mt-2 leading-relaxed">Ảnh Flower Photos từ TensorFlow, giấy phép CC BY 2.0. Bạn có thể xem thông tin tác giả của từng ảnh bên dưới.</p>
+              <a href="https://www.tensorflow.org/tutorials/load_data/images" target="_blank" rel="noreferrer" className="inline-block mt-1 underline">Xem bộ dữ liệu gốc</a>
+              <a href={`/api/projects/${dataset.project_id}/dataset-license`} className="inline-block ml-3 mt-1 underline">Bản quyền ảnh</a>
+            </details>
+          </div>
+        )}
+
+        <button type="button" onClick={() => setShowLibrary(true)}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition ${theme === 'light' ? 'bg-sky-50 border-sky-200 text-sky-800 hover:bg-sky-100' : 'bg-cyan-500/[0.07] border-cyan-400/20 text-cyan-300 hover:bg-cyan-500/15'}`}>
+          {isSampleImporting ? <RefreshCw size={15} className="animate-spin" /> : <BookOpen size={15} />}
+          {isSampleImporting ? 'Đang chuẩn bị dataset · Xem tiến độ' : sampleSource ? 'Chọn dataset khác' : 'Chọn dataset mẫu'}
+        </button>
+
         {/* Dataset Stats Row */}
         <div className={`grid grid-cols-3 gap-2 text-[11px] font-mono p-2 rounded-xl border ${
           theme === 'light' ? 'bg-slate-100/90 border-slate-200' : 'bg-white/5 border-white/5'
@@ -166,6 +190,7 @@ export const DatasetStudio: React.FC = () => {
           )}
         </button>
       </div>
+      <SampleDatasetLibrary open={showLibrary} onClose={closeLibrary} />
     </div>
   )
 }

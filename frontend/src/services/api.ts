@@ -8,6 +8,8 @@ import type {
   ParameterSpec,
   PredictionResult,
   Project,
+  SampleDataset,
+  SampleImportJob,
   Subset,
   SystemCapabilities,
   TrainingConfigState,
@@ -21,6 +23,17 @@ const request = <T>(endpoint: string, options: RequestInit = {}, timeoutMs?: num
   requestJson<T>(`${API_BASE}${endpoint}`, options, timeoutMs)
 
 export const api = {
+  // Curated datasets: download once on the backend, then import from local cache.
+  getSampleDatasets: () => request<{ datasets: SampleDataset[] }>('/sample-datasets'),
+  importFlowers: (classIds: string[], imagesPerClass: number, seed: number) =>
+    request<SampleImportJob>('/sample-datasets/flowers/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ class_ids: classIds, images_per_class: imagesPerClass, seed,
+        project_name: `Flower Photos · ${classIds.length} lớp` }),
+    }),
+  getSampleImport: (jobId: string) => request<SampleImportJob>(`/sample-datasets/imports/${jobId}`),
+
   // System
   getCapabilities: () => request<SystemCapabilities>('/system/capabilities', {}, 30_000),
   getParameters: () => request<{ parameters: ParameterSpec[] }>('/system/parameters'),

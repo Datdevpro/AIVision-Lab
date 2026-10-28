@@ -1,0 +1,16 @@
+All images in this archive are licensed under the Creative Commons By-Attribution License, available at:
+https://creativecommons.org/licenses/by/2.0/
+The photographers are listed below, thanks to all of them for making their work available, and please be sure to credit them for any use as per the license.
+
+Preview images resized from Flower Photos, distributed by TensorFlow:
+https://www.tensorflow.org/tutorials/load_data/images
+
+daisy.jpg: resized from daisy/100080576_f52e8ee070_n.jpg CC-BY by mario - https://www.flickr.com/photos/64738468@N00/100080576/
+
+dandelion.jpg: resized from dandelion/10043234166_e6dd915111_n.jpg CC-BY by Vlastimil Koutecký - https://www.flickr.com/photos/vlastimil_koutecky/10043234166/
+
+roses.jpg: resized from roses/10090824183_d02c613f10_m.jpg CC-BY by Von Fumetti - https://www.flickr.com/photos/104286287@N06/10090824183/
+
+sunflowers.jpg: resized from sunflowers/1008566138_6927679c8a.jpg CC-BY by liz west - https://www.flickr.com/photos/calliope/1008566138/
+
+tulips.jpg: resized from tulips/100930342_92e8746431_n.jpg CC-BY by Jackie Curry - https://www.flickr.com/photos/octoberdog/100930342/

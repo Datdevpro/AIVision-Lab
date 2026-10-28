@@ -85,6 +85,7 @@ class DatasetOut(BaseModel):
     project_id: str
     classes: list[ClassWithImages]
     summary: dict[str, Any]
+    sample_source: dict[str, Any] | None = None
 
 
 class TrainingStartRequest(BaseModel):

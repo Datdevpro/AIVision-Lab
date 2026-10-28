@@ -108,7 +108,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <Camera className="w-3.5 h-3.5 text-purple-600" />
-            <span>Nguồn: {image.source === 'webcam' ? 'Webcam' : 'Tải lên'}</span>
+            <span>Nguồn: {image.source === 'sample' ? 'Dataset mẫu' : image.source === 'webcam' ? 'Webcam' : 'Tải lên'}</span>
           </div>
           <div className="flex items-center gap-2">
             <HardDrive className="w-3.5 h-3.5 text-blue-600" />

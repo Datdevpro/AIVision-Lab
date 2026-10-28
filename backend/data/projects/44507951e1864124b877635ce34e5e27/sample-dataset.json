@@ -1,0 +1,1 @@
+{"id": "flowers", "name": "Flower Photos", "source_url": "https://www.tensorflow.org/tutorials/load_data/images", "class_ids": ["daisy", "roses", "sunflowers"], "images_per_class": 50, "imported_images": 150, "seed": 42, "sha256": "4c54ace7911aaffe13a365c34f650e71dd5bf1be0a58b464e5a7183e3e595d9c"}

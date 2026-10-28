@@ -31,6 +31,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classItem, canDelete }) =>
   const [previewImage, setPreviewImage] = useState<ImageItem | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showAllImages, setShowAllImages] = useState(false)
   const [modalAction, setModalAction] = useState<'delete_class' | 'clear_images' | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -351,7 +352,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classItem, canDelete }) =>
           </div>
         ) : (
           <div className="grid grid-cols-4 gap-1.5 max-h-44 overflow-y-auto pr-1">
-            {images.map((img) => (
+            {(showAllImages ? images : images.slice(0, 8)).map((img) => (
               <div
                 key={img.id}
                 onClick={() => setPreviewImage(img)}
@@ -363,7 +364,7 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classItem, canDelete }) =>
               >
                 <img
                   src={api.getImageUrl(img.id, true)}
-                  alt="Thumb"
+                  alt={classItem.name}
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
                 />
@@ -380,6 +381,13 @@ export const ClassCard: React.FC<ClassCardProps> = ({ classItem, canDelete }) =>
           </div>
         )}
       </div>
+
+      {images.length > 8 && (
+        <button type="button" onClick={() => setShowAllImages(value => !value)}
+          className={`w-full text-[11px] font-semibold py-1 ${theme === 'light' ? 'text-sky-700' : 'text-cyan-300'}`}>
+          {showAllImages ? 'Thu gọn ảnh' : `Xem thêm ${images.length - 8} ảnh`}
+        </button>
+      )}
 
       {/* Clear Images Modal */}
       {modalAction === 'clear_images' && typeof document !== 'undefined' && createPortal(

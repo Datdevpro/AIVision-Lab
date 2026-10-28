@@ -27,7 +27,7 @@ export interface ImageItem {
   class_id: string
   subset: Subset
   session_id: string | null
-  source: 'upload' | 'webcam'
+  source: 'upload' | 'webcam' | 'sample'
   original_name: string
   original_width: number
   original_height: number
@@ -81,6 +81,44 @@ export interface DatasetResponse {
   project_id: string
   classes: ClassItem[]
   summary: DatasetSummary
+  sample_source?: SampleDatasetSource | null
+}
+
+export interface SampleDatasetSource {
+  id: string
+  name: string
+  source_url: string
+  class_ids: string[]
+  images_per_class: number
+  imported_images: number
+  seed: number
+}
+
+export interface SampleDataset {
+  id: string
+  name: string
+  description: string
+  source_url: string
+  download_bytes: number
+  cached: boolean
+  min_classes: number
+  max_classes: number
+  min_images_per_class: number
+  max_images_per_class: number
+  max_images_per_project: number
+  classes: { id: string; name: string; available: number; preview_url: string }[]
+}
+
+export interface SampleImportJob {
+  id: string
+  status: 'preparing' | 'downloading' | 'extracting' | 'importing' | 'completed' | 'failed'
+  message: string
+  downloaded_bytes: number
+  download_bytes: number
+  imported_images: number
+  total_images: number
+  project_id: string | null
+  error: string | null
 }
 
 export interface TrainingConfigState {

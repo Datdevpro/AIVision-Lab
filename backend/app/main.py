@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import dataset, experiments, inference, system, training
+from app.api import dataset, experiments, inference, sample_datasets, system, training
 from app.api.deps import require_token
 from app.core.config import get_settings
 from app.core.db import init_db
@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     api = APIRouter(prefix="/api")
     api.include_router(system.public_router)  # /api/health stays open for liveness checks
     protected = APIRouter(dependencies=[Depends(require_token)])
-    for r in (dataset.router, training.router, experiments.router, inference.router, system.router):
+    for r in (dataset.router, sample_datasets.router, training.router, experiments.router, inference.router, system.router):
         protected.include_router(r)
     api.include_router(protected)
     app.include_router(api)

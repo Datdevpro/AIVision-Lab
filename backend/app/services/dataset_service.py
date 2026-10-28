@@ -1,6 +1,7 @@
 """Dataset service: projects, classes, images (DB + files) and dataset summaries."""
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from pathlib import Path
@@ -149,6 +150,7 @@ def clear_class_images(session: Session, class_id: str) -> int:
 
 def export_class_images(session: Session, class_id: str) -> tuple[str, bytes]:
     """Create a zip archive containing all images of this class."""
+    import csv
     import io
     import zipfile
     c = session.get(ImageClass, class_id)
@@ -157,6 +159,7 @@ def export_class_images(session: Session, class_id: str) -> tuple[str, bytes]:
     settings = get_settings()
     imgs = list(session.exec(select(ImageRecord).where(ImageRecord.class_id == class_id).order_by(ImageRecord.created_at)))
     buf = io.BytesIO()
+    source_rows = []
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for idx, img in enumerate(imgs, 1):
             path = (settings.projects_dir / img.rel_path).resolve()
@@ -164,6 +167,16 @@ def export_class_images(session: Session, class_id: str) -> tuple[str, bytes]:
                 ext = path.suffix or ".jpg"
                 filename = f"{c.name}_{idx:03d}{ext}"
                 zf.write(path, arcname=filename)
+                if img.source == "sample":
+                    source_rows.append((filename, img.original_name))
+        license_path = project_dir(c.project_id, settings) / "DATASET-LICENSE.txt"
+        if source_rows and license_path.is_file():
+            zf.write(license_path, arcname="DATASET-LICENSE.txt")
+            mapping = io.StringIO()
+            writer = csv.writer(mapping)
+            writer.writerow(("exported_filename", "original_dataset_filename"))
+            writer.writerows(source_rows)
+            zf.writestr("IMAGE-SOURCES.csv", mapping.getvalue().encode("utf-8-sig"))
     buf.seek(0)
     return f"{c.name}_samples.zip", buf.getvalue()
 
@@ -298,8 +311,13 @@ def dataset_view(session: Session, project_id: str, strategy: str, val_split: fl
     by_class: dict[str, list[ImageOut]] = {c.id: [] for c in classes}
     for i in imgs:
         by_class.setdefault(i.class_id, []).append(image_out(i))
+    try:
+        sample_source = json.loads((project_dir(project_id) / "sample-dataset.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        sample_source = None
     return {
         "project_id": project_id,
+        "sample_source": sample_source,
         "classes": [
             {"id": c.id, "project_id": c.project_id, "name": c.name, "position": c.position, "images": by_class.get(c.id, [])}
             for c in classes

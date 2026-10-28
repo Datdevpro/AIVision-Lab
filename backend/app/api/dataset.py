@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from app.core.config import get_settings
 from app.core.db import get_session
-from app.core.errors import bad_request
+from app.core.errors import bad_request, not_found
 from app.models.db_models import ImageRecord, Project
 from app.schemas.api import (
     ClassCreate, ClassOut, ClassUpdate, DatasetOut, ImageOut, ImageUpdate, ProjectCreate,
@@ -106,6 +106,15 @@ def get_dataset(
     seed: int = Query(42, ge=0, le=2**31 - 1),
 ):
     return ds.dataset_view(session, project_id, strategy, val_split, seed)
+
+
+@router.get("/projects/{project_id}/dataset-license")
+def dataset_license(project_id: str, session: SessionDep):
+    ds.get_project(session, project_id)
+    path = ds.project_dir(project_id) / "DATASET-LICENSE.txt"
+    if not path.is_file():
+        raise not_found("thông tin bản quyền dataset")
+    return FileResponse(path, media_type="text/plain; charset=utf-8", filename="Flower-Photos-LICENSE.txt")
 
 
 @router.post("/projects/{project_id}/images", response_model=UploadResponse, status_code=201)
