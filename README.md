@@ -49,6 +49,47 @@ Các lệnh dưới đây dành cho **Windows PowerShell**, chạy từ thư m�
 
 ### 1. Chuẩn bị môi trường
 
+**Cài nhanh trên máy Windows mới:** cài Git, **Python 3.12 64-bit** (3.11 cũng được) và **Node.js 24 LTS** kèm npm. Khi cài Python, bật Python Launcher và thêm Python vào PATH. Sau đó mở terminal mới:
+
+```powershell
+git clone https://github.com/Datdevpro/AIVision-Lab.git
+cd AIVision-Lab
+.\setup.bat
+.\run.bat
+```
+
+Mở **<http://localhost:8000>**. `setup.bat` tạo virtual environment, cài PyTorch CPU và dependency Python, chạy `npm ci`, build frontend, kiểm tra backend và tải trước trọng số MobileNet. `run.bat` phục vụ cả giao diện lẫn API trên một cổng; giữ cửa sổ terminal mở và bấm **Ctrl+C** để dừng. Có thể chạy các file `.bat` từ Explorer hoặc từ thư mục khác; script tự tìm thư mục dự án. Các file `.bat` dùng execution-policy bypass cho lần chạy đó, không thay đổi execution policy của hệ thống.
+
+Các tùy chọn setup:
+
+```powershell
+# Kiểm tra Python, Node.js và cấu trúc dự án, chưa cài gì
+.\setup.bat -CheckOnly
+
+# NVIDIA: chọn bản CUDA phù hợp với driver (ví dụ CUDA 12.8)
+.\setup.bat -Torch cu128
+
+# Chuẩn bị sẵn cả Flower Photos (~218 MiB) để dùng offline
+.\setup.bat -PrefetchFlowers
+
+# Chỉ định Python nếu máy có nhiều phiên bản
+.\setup.bat -PythonPath "C:\Python312\python.exe"
+
+# Cài thêm pytest/httpx; hoặc bỏ tải trọng số pretrained
+.\setup.bat -IncludeTests
+.\setup.bat -SkipWeights
+
+# Chạy cổng khác hoặc lưu dữ liệu ở vị trí riêng
+.\run.bat -Port 8001
+.\run.bat -DataDir "D:\VisionLabData"
+```
+
+Tùy chọn `-Torch` nhận `cpu`, `cu124`, `cu126`, `cu128`, `cu130`. Xem [các bản PyTorch chính thức](https://pytorch.org/get-started/previous-versions/) để chọn bản phù hợp với driver NVIDIA. Setup kiểm tra CUDA thực sự hoạt động khi chọn bản GPU; mặc định CPU chạy được trên máy không có NVIDIA. Khi chạy lại setup, hãy giữ cùng giá trị `-Torch` và đóng backend trước khi thay dependency. Setup giữ dữ liệu dự án; một virtual environment đã chép từ máy khác cần được đổi tên rồi tạo lại. `run.bat` báo lỗi khi cổng đang bận và cho phép đổi cổng bằng `-Port`.
+
+Cài đặt lần đầu cần Internet. Muốn dùng offline, chạy setup khi còn mạng, dùng thêm `-PrefetchFlowers` nếu cần dataset mẫu. Chỉ cần sao chép `backend/data` khi muốn mang theo dữ liệu/thí nghiệm từ máy cũ; nếu từng đặt `VISIONLAB_DATA_DIR`, sao chép thư mục tương ứng. Dừng app trước khi sao chép SQLite và dữ liệu. Giữ nguyên cấu trúc database, `projects`, `checkpoints`, `torch_cache` và `sample_datasets`; thư mục `.venv` và `node_modules` được tạo lại bằng setup trên máy mới.
+
+**Cài thủ công hoặc chạy chế độ phát triển:**
+
 | Thành phần | Môi trường đề xuất |
 | --- | --- |
 | Python | 3.11 hoặc 3.12; ví dụ bên dưới dùng 3.12 |
