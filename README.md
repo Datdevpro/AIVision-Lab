@@ -69,6 +69,12 @@ Các tùy chọn setup:
 # NVIDIA: chọn bản CUDA phù hợp với driver (ví dụ CUDA 12.8)
 .\setup.bat -Torch cu128
 
+# Cài/cập nhật Visual C++ Runtime x64 nếu máy mới thiếu hoặc bị lỗi DLL
+.\setup.bat -InstallVCRuntime
+
+# Nếu bản CPU vẫn lỗi nạp DLL: dùng cặp PyTorch CPU tương thích
+.\setup.bat -Torch cpu -CpuCompatibility
+
 # Chuẩn bị sẵn cả Flower Photos (~218 MiB) để dùng offline
 .\setup.bat -PrefetchFlowers
 
@@ -85,6 +91,10 @@ Các tùy chọn setup:
 ```
 
 Tùy chọn `-Torch` nhận `cpu`, `cu124`, `cu126`, `cu128`, `cu130`. Xem [các bản PyTorch chính thức](https://pytorch.org/get-started/previous-versions/) để chọn bản phù hợp với driver NVIDIA. Setup kiểm tra CUDA thực sự hoạt động khi chọn bản GPU; mặc định CPU chạy được trên máy không có NVIDIA. Khi chạy lại setup, hãy giữ cùng giá trị `-Torch` và đóng backend trước khi thay dependency. Setup giữ dữ liệu dự án; một virtual environment đã chép từ máy khác cần được đổi tên rồi tạo lại. `run.bat` báo lỗi khi cổng đang bận và cho phép đổi cổng bằng `-Port`.
+
+PyTorch trên Windows còn cần **Microsoft Visual C++ Runtime x64**. Setup kiểm tra các DLL runtime trước khi cài dependency và thử import PyTorch ngay sau bước cài Python, trước khi build frontend. `-InstallVCRuntime` tải installer từ Microsoft, kiểm tra chữ ký Microsoft rồi chạy cài/cập nhật; Windows có thể yêu cầu quyền quản trị. Nếu installer yêu cầu restart, khởi động lại rồi chạy setup tiếp. Có thể [tải bản x64 từ Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/) và chọn Install/Repair thủ công.
+
+Nếu gặp `WinError 1114`, `c10.dll` hoặc lỗi DLL tương tự, cập nhật runtime trước. Nếu vẫn lỗi với bản CPU, dùng `-CpuCompatibility` để cài đúng cặp `torch==2.8.0` / `torchvision==0.23.0` từ index CPU chính thức. Đây là tùy chọn xử lý tương thích, không phải bảo đảm sửa mọi lỗi DLL. Chạy `.\backend\.venv\Scripts\python.exe backend/scripts/prepare_install.py --diagnose` để lấy phiên bản Windows, Python và package mà không cần import PyTorch. Lệnh này vẫn chạy khi `import torch` đang lỗi.
 
 Cài đặt lần đầu cần Internet. Muốn dùng offline, chạy setup khi còn mạng, dùng thêm `-PrefetchFlowers` nếu cần dataset mẫu. Chỉ cần sao chép `backend/data` khi muốn mang theo dữ liệu/thí nghiệm từ máy cũ; nếu từng đặt `VISIONLAB_DATA_DIR`, sao chép thư mục tương ứng. Dừng app trước khi sao chép SQLite và dữ liệu. Giữ nguyên cấu trúc database, `projects`, `checkpoints`, `torch_cache` và `sample_datasets`; thư mục `.venv` và `node_modules` được tạo lại bằng setup trên máy mới.
 

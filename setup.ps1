@@ -16,6 +16,8 @@ param(
     [switch]$SkipWeights,
     [switch]$PrefetchFlowers,
     [switch]$IncludeTests,
+    [switch]$InstallVCRuntime,
+    [switch]$CpuCompatibility,
     [switch]$CheckOnly
 )
 
@@ -77,7 +79,8 @@ Push-Location -LiteralPath $PSScriptRoot
 try {
     Write-Host '=== Vision Lab AI - Windows setup ===' -ForegroundColor Cyan
     if ($env:OS -ne 'Windows_NT') { throw 'This script targets Windows. See README.md for the manual install commands.' }
-    foreach ($required in @('backend/requirements.txt', 'frontend/package-lock.json', 'backend/scripts/prepare_install.py')) {
+    if ($CpuCompatibility -and $Torch -ne 'cpu') { throw '-CpuCompatibility can only be used with -Torch cpu.' }
+    foreach ($required in @('backend/requirements.txt', 'frontend/package-lock.json', 'backend/scripts/prepare_install.py', 'windows-runtime.ps1')) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Missing $required. Run setup from a complete clone of this repository." }
     }
     $basePython = Find-Python
@@ -93,6 +96,9 @@ try {
     if ([int]$Matches[1] -lt 24) { throw "Node.js 24 or later is required; found $nodeVersion. Install Node.js 24 LTS and retry." }
     Write-Host "Node.js $nodeVersion; npm: $($npm.Source)"
     Write-Host "PyTorch package index: https://download.pytorch.org/whl/$Torch"
+    . (Join-Path $PSScriptRoot 'windows-runtime.ps1')
+    if ($InstallVCRuntime -and -not $CheckOnly) { Install-VisionLabVCRuntime }
+    Test-VisionLabVCRuntime
 
     $venvDirectory = Join-Path $PSScriptRoot 'backend/.venv'
     $venvPython = Join-Path $venvDirectory 'Scripts/python.exe'
@@ -119,7 +125,14 @@ try {
     $currentWheel = & $venvPython -c "import importlib.metadata as m; print(next((d.version for d in m.distributions() if d.metadata['Name'].lower()=='torch'), 'missing'))"
     if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the existing Python environment.' }
     $wheelMatches = ($Torch -eq 'cpu' -and $currentWheel -match '\+cpu$') -or ($Torch -ne 'cpu' -and $currentWheel -match "\+$Torch`$")
-    $torchArguments = @('-m', 'pip', 'install', 'torch', 'torchvision', '--index-url', "https://download.pytorch.org/whl/$Torch")
+    $torchPackages = @('torch', 'torchvision')
+    if ($CpuCompatibility) {
+        # Official paired CPU wheels; opt-in fallback for Windows DLL problems.
+        $torchPackages = @('torch==2.8.0', 'torchvision==0.23.0')
+        $wheelMatches = $wheelMatches -and $currentWheel -match '^2\.8\.0\+cpu$'
+        Write-Host 'CPU compatibility mode: torch 2.8.0 + torchvision 0.23.0.' -ForegroundColor Yellow
+    }
+    $torchArguments = @('-m', 'pip', 'install') + $torchPackages + @('--index-url', "https://download.pytorch.org/whl/$Torch")
     if ($currentWheel -ne 'missing' -and -not $wheelMatches) {
         Write-Host "Replacing existing PyTorch $currentWheel with the requested $Torch build. Close running backend processes first."
         $torchArguments += '--force-reinstall'
@@ -128,6 +141,8 @@ try {
     $requirements = if ($IncludeTests) { 'backend/requirements-dev.txt' } else { 'backend/requirements.txt' }
     Invoke-Checked -Executable $venvPython -Arguments @('-m', 'pip', 'install', '-r', $requirements)
     Invoke-Checked -Executable $venvPython -Arguments @('-m', 'pip', 'check')
+    Write-Host 'Checking PyTorch DLLs before installing/building the frontend...' -ForegroundColor Yellow
+    Invoke-Checked -Executable $venvPython -Arguments @('backend/scripts/prepare_install.py', '--torch', $Torch)
 
     Write-Host '[3/5] Installing frontend dependencies from package-lock.json...' -ForegroundColor Yellow
     Invoke-Checked -Executable $npm.Source -Arguments @('--prefix', 'frontend', 'ci', '--include=dev')

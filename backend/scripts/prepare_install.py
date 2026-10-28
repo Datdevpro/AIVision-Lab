@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
+import platform
+import struct
 import sys
 from pathlib import Path
 
@@ -9,18 +12,54 @@ BACKEND = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND))
 
 
+def print_environment() -> None:
+    print(f"OS: {platform.platform()}", flush=True)
+    print(f"Python: {sys.version.split()[0]} ({struct.calcsize('P') * 8}-bit), {sys.executable}", flush=True)
+    for name in ("torch", "torchvision"):
+        try:
+            version = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            version = "not installed"
+        print(f"Installed {name}: {version}", flush=True)
+
+
+def report_import_failure(exc: Exception) -> None:
+    print("\nPyTorch/torchvision could not be loaded.", file=sys.stderr)
+    print(f"Original error: {exc}", file=sys.stderr)
+    if sys.platform == "win32" and (isinstance(exc, OSError) or "DLL" in str(exc)):
+        print(
+            "This is a Windows native-library loading failure, before model/data downloads.\n"
+            "1. Install/update or repair Microsoft Visual C++ Runtime x64:\n"
+            "   https://aka.ms/vc14/vc_redist.x64.exe\n"
+            "   Updated setup: .\\setup.bat -InstallVCRuntime\n"
+            "2. Restart Windows if the installer requests it, then retry.\n"
+            "3. If a CPU-only install still fails, try the paired compatibility wheels:\n"
+            "   .\\setup.bat -Torch cpu -CpuCompatibility\n"
+            "This error alone cannot distinguish an outdated runtime, conflicting DLLs,\n"
+            "an incompatible wheel, or another Windows dependency. Do not download individual DLL files.",
+            file=sys.stderr,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--torch", choices=("cpu", "cu124", "cu126", "cu128", "cu130"), default="cpu")
     parser.add_argument("--prefetch-weights", action="store_true")
     parser.add_argument("--prefetch-flowers", action="store_true")
+    parser.add_argument("--diagnose", action="store_true", help="Print OS/Python/package versions without importing torch")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-
-    import torch
-    import torchvision
-    from torchvision.ops import nms
+    print_environment()
+    if args.diagnose:
+        return
+    try:
+        import torch
+        import torchvision
+        from torchvision.ops import nms
+    except (OSError, ImportError) as exc:
+        report_import_failure(exc)
+        raise SystemExit(1) from None
 
     from app.core.config import get_settings
     from app.main import create_app
