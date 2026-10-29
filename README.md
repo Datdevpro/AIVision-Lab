@@ -49,7 +49,7 @@ Các lệnh dưới đây dành cho **Windows PowerShell**, chạy từ thư m�
 
 ### 1. Chuẩn bị môi trường
 
-**Cài nhanh trên máy Windows mới:** cài Git, **Python 3.12 64-bit** (3.11 cũng được) và **Node.js 24 LTS** kèm npm. Khi cài Python, bật Python Launcher và thêm Python vào PATH. Sau đó mở terminal mới:
+**Cài nhanh trên máy Windows mới:** cài Git rồi clone dự án. Setup tự dùng Python 3.11/3.12 64-bit và Node.js 24.x x64 kèm npm từ 10 nếu đã có; nếu thiếu hoặc sai phiên bản, tải Python 3.12 và Node.js 24 LTS kèm npm vào `.tools` trong dự án, không thêm vào PATH/registry của hệ thống.
 
 ```powershell
 git clone https://github.com/Datdevpro/AIVision-Lab.git
@@ -58,15 +58,24 @@ cd AIVision-Lab
 .\run.bat
 ```
 
-Mở **<http://localhost:8000>**. `setup.bat` tạo virtual environment, cài PyTorch CPU và dependency Python, chạy `npm ci`, build frontend, kiểm tra backend và tải trước trọng số MobileNet. `run.bat` phục vụ cả giao diện lẫn API trên một cổng; giữ cửa sổ terminal mở và bấm **Ctrl+C** để dừng. Có thể chạy các file `.bat` từ Explorer hoặc từ thư mục khác; script tự tìm thư mục dự án. Các file `.bat` dùng execution-policy bypass cho lần chạy đó, không thay đổi execution policy của hệ thống.
+Mở **<http://localhost:8000>**. `setup.bat` kiểm tra cấu hình máy, tạo virtual environment, tự chọn PyTorch CUDA khi có GPU NVIDIA/driver phù hợp (CPU nếu không), cài dependency Python, chạy `npm ci`, build frontend và tải trước trọng số MobileNet. Setup thử chạy MobileNet thực tế trên GPU; nếu kiểm tra thất bại ở chế độ `auto`, báo lỗi rồi chuyển sang CPU. `run.bat` phục vụ cả giao diện lẫn API trên một cổng; giữ cửa sổ terminal mở và bấm **Ctrl+C** để dừng. Có thể chạy các file `.bat` từ Explorer hoặc từ thư mục khác; script tự tìm thư mục dự án. Các file `.bat` dùng execution-policy bypass cho lần chạy đó, không thay đổi execution policy của hệ thống.
+
+**Vị trí cài đặt:** mọi thư viện Python, kể cả PyTorch, được cài bằng `backend/.venv/Scripts/python.exe -m pip` vào `backend/.venv/Lib/site-packages`. Setup từ chối Python hệ thống, venv dùng chung và thư mục cài đặt trỏ qua junction/symlink. Cấu hình `PIP_TARGET`, `PIP_PREFIX`, `PIP_USER`, Python user-site và cấu hình pip bên ngoài được vô hiệu hóa trong lúc chạy setup. Cache pip/npm/uv, file tải về và thư mục tạm nằm trong `.cache`; Python/Node dự phòng nằm trong `.tools`; Vite/React/TypeScript nằm trong `frontend/node_modules`; trọng số pretrained nằm trong `backend/data/torch_cache`. Nếu clone vào ổ D, các thư mục này đều ở ổ D. Các biến môi trường chỉ thay đổi trong phiên setup và được khôi phục khi kết thúc. Setup không gỡ hay nâng cấp Python/Node có sẵn trên máy.
+
+**Kiểm tra phần cứng:** Windows 10/11 x64 trên CPU Intel/AMD, RAM tối thiểu 4 GB (khuyến nghị từ 8 GB), trống ít nhất 8 GB trên ổ chứa dự án cho CPU hoặc 16 GB cho CUDA. Đây là ngưỡng kiểm tra của installer, không bảo đảm đủ bộ nhớ cho mọi dataset/mô hình; nên chừa thêm dung lượng cho dữ liệu và checkpoint. GPU dưới 4 GB VRAM sẽ có cảnh báo giảm batch size. GPU AMD/Intel dùng CPU trong quy trình Windows này.
 
 Các tùy chọn setup:
 
 ```powershell
-# Kiểm tra Python, Node.js và cấu trúc dự án, chưa cài gì
+# Xem cấu hình máy, runtime còn thiếu và lựa chọn CPU/CUDA; không tải/cài gì
 .\setup.bat -CheckOnly
 
-# NVIDIA: chọn bản CUDA phù hợp với driver (ví dụ CUDA 12.8)
+# Mặc định: tự phát hiện NVIDIA/driver, không cần chỉ định -Torch
+.\setup.bat
+
+# Bắt buộc CPU, hoặc bắt buộc một bản CUDA (lỗi GPU sẽ dừng, không tự chuyển CPU)
+.\setup.bat -Torch cpu
+.\setup.bat -Torch cu118
 .\setup.bat -Torch cu128
 
 # Cài/cập nhật Visual C++ Runtime x64 nếu máy mới thiếu hoặc bị lỗi DLL
@@ -90,9 +99,13 @@ Các tùy chọn setup:
 .\run.bat -DataDir "D:\VisionLabData"
 ```
 
-Tùy chọn `-Torch` nhận `cpu`, `cu124`, `cu126`, `cu128`, `cu130`. Xem [các bản PyTorch chính thức](https://pytorch.org/get-started/previous-versions/) để chọn bản phù hợp với driver NVIDIA. Setup kiểm tra CUDA thực sự hoạt động khi chọn bản GPU; mặc định CPU chạy được trên máy không có NVIDIA. Khi chạy lại setup, hãy giữ cùng giá trị `-Torch` và đóng backend trước khi thay dependency. Setup giữ dữ liệu dự án; một virtual environment đã chép từ máy khác cần được đổi tên rồi tạo lại. `run.bat` báo lỗi khi cổng đang bận và cho phép đổi cổng bằng `-Port`.
+Tùy chọn `-Torch` nhận `auto` (mặc định), `cpu`, `cu118`, `cu124`, `cu126`, `cu128`, `cu130`. Chế độ tự động kiểm tra GPU đầu tiên: CUDA 12.8 cho compute capability từ 7.5 và driver Windows từ 571.96; CUDA 11.8 cho GPU compute từ 5.0 đến dưới 10.0 với driver từ 522.06; trường hợp khác dùng CPU. Ví dụ RTX 4060 + driver 546.12 chọn `cu118`. Đây là lựa chọn bảo thủ; setup vẫn phải thử chạy model thực tế, không chỉ dựa vào dòng “CUDA Version” của `nvidia-smi`. Có thể chỉ định `-Torch` để dùng cấu hình khác. Driver NVIDIA được giữ nguyên; nếu chưa cài driver hoặc GPU cần driver mới, cập nhật driver rồi chạy lại setup. Xem [các cặp torch/torchvision chính thức](https://pytorch.org/get-started/previous-versions/) và [driver CUDA 12.8](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-toolkit-release-notes/index.html).
 
-PyTorch trên Windows còn cần **Microsoft Visual C++ Runtime x64**. Setup kiểm tra các DLL runtime trước khi cài dependency và thử import PyTorch ngay sau bước cài Python, trước khi build frontend. `-InstallVCRuntime` tải installer từ Microsoft, kiểm tra chữ ký Microsoft rồi chạy cài/cập nhật; Windows có thể yêu cầu quyền quản trị. Nếu installer yêu cầu restart, khởi động lại rồi chạy setup tiếp. Có thể [tải bản x64 từ Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/) và chọn Install/Repair thủ công.
+Setup ghim cặp phiên bản để tránh tải nhầm bản mới không còn tương thích: CPU/cu126/cu128 dùng `torch==2.8.0` + `torchvision==0.23.0`; cu118 dùng `2.7.1` + `0.22.1`; cu124 dùng `2.6.0` + `0.21.0`; cu130 dùng `2.9.1` + `0.24.1`. Dependency backend được cập nhật theo `requirements.txt`, còn frontend dùng phiên bản trong `package-lock.json`. Đóng backend trước khi chạy lại setup. Venv hỏng, sai Python hoặc chép từ máy khác được giữ lại với tên `backend/.venv.backup-<id>`, rồi tạo lại; không xóa dữ liệu dự án. Các bản backup có thể chiếm nhiều GB. `run.bat` báo lỗi khi cổng đang bận và cho phép đổi cổng bằng `-Port`. Ứng dụng mặc định dùng `VISIONLAB_DEVICE=auto`; nếu đã ép biến này thành `cpu` thì cần bỏ cấu hình ép CPU để training dùng GPU.
+
+PyTorch trên Windows còn cần **Microsoft Visual C++ Runtime x64**. Setup kiểm tra DLL runtime trước khi cài dependency và tự tải/cài nếu thiếu hoặc quá cũ; `-InstallVCRuntime` buộc chạy lại bước cài/cập nhật. Installer được tải vào `.cache/tmp`, kiểm tra chữ ký Microsoft rồi mới chạy. **Đây là thành phần hệ thống Windows, được Microsoft cài vào thư mục hệ thống và có thể hiện UAC yêu cầu quyền quản trị; không phải thư viện Python.** Nếu installer yêu cầu restart, khởi động lại rồi chạy setup tiếp. Có thể [tải bản x64 từ Microsoft](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/) và chọn Install/Repair thủ công. Setup không tự cài driver NVIDIA.
+
+Python dự phòng được tải bằng bản [uv portable](https://docs.astral.sh/uv/guides/install-python/) ghim phiên bản và SHA-256, tắt đăng ký Python vào registry/PATH. Node được tải từ [kênh Node.js 24 chính thức](https://nodejs.org/dist/latest-v24.x/) và kiểm tra SHA-256 trước khi giải nén. `-CheckOnly` chỉ báo runtime còn thiếu; không tự tải hay cài runtime.
 
 Nếu gặp `WinError 1114`, `c10.dll` hoặc lỗi DLL tương tự, cập nhật runtime trước. Nếu vẫn lỗi với bản CPU, dùng `-CpuCompatibility` để cài đúng cặp `torch==2.8.0` / `torchvision==0.23.0` từ index CPU chính thức. Đây là tùy chọn xử lý tương thích, không phải bảo đảm sửa mọi lỗi DLL. Chạy `.\backend\.venv\Scripts\python.exe backend/scripts/prepare_install.py --diagnose` để lấy phiên bản Windows, Python và package mà không cần import PyTorch. Lệnh này vẫn chạy khi `import torch` đang lỗi.
 
