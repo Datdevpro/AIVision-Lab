@@ -43,7 +43,7 @@ def report_import_failure(exc: Exception) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--torch", choices=("cpu", "cu124", "cu126", "cu128", "cu130"), default="cpu")
+    parser.add_argument("--torch", choices=("cpu", "cu118", "cu124", "cu126", "cu128", "cu130"), default="cpu")
     parser.add_argument("--prefetch-weights", action="store_true")
     parser.add_argument("--prefetch-flowers", action="store_true")
     parser.add_argument("--diagnose", action="store_true", help="Print OS/Python/package versions without importing torch")
@@ -75,6 +75,19 @@ def main() -> None:
             raise RuntimeError("CUDA is unavailable. Check the NVIDIA driver, choose a compatible -Torch build, or run setup with -Torch cpu.")
         print(f"GPU: {torch.cuda.get_device_name(0)}", flush=True)
         torch.ones(1, device="cuda").cpu()
+        # Allocation can succeed even when the wheel lacks kernels for this GPU.
+        from torchvision.models import mobilenet_v3_small
+
+        probe_model = mobilenet_v3_small(weights=None).eval().to("cuda")
+        with torch.inference_mode():
+            probe_output = probe_model(torch.zeros(1, 3, 64, 64, device="cuda"))
+        assert probe_output.shape == (1, 1000)
+        # Verify gradients as well, since this setup enables GPU training.
+        classifier = torch.nn.Linear(576, 2, device="cuda")
+        classifier(torch.ones(2, 576, device="cuda")).square().mean().backward()
+        torch.cuda.synchronize()
+        del probe_model, probe_output, classifier
+        torch.cuda.empty_cache()
 
     # Exercise a compiled torchvision op to detect incompatible torch/torchvision wheels.
     assert nms(torch.tensor([[0.0, 0.0, 8.0, 8.0]]), torch.tensor([0.9]), 0.5).tolist() == [0]
