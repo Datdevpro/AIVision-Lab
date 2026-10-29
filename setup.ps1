@@ -1,17 +1,17 @@
 <#
 .SYNOPSIS
-Install Vision Lab AI on Windows after cloning the repository.
+Prepare Vision Lab AI on Windows. All Python packages/caches stay in this project.
 .EXAMPLE
 .\setup.ps1
 .EXAMPLE
-.\setup.ps1 -Torch cu128 -PrefetchFlowers
+.\setup.ps1 -Torch cpu -PrefetchFlowers
 .EXAMPLE
-.\setup.ps1 -PythonPath 'C:\Python312\python.exe' -IncludeTests
+.\setup.ps1 -CheckOnly
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('cpu', 'cu124', 'cu126', 'cu128', 'cu130')]
-    [string]$Torch = 'cpu',
+    [ValidateSet('auto', 'cpu', 'cu118', 'cu124', 'cu126', 'cu128', 'cu130')]
+    [string]$Torch = 'auto',
     [string]$PythonPath,
     [switch]$SkipWeights,
     [switch]$PrefetchFlowers,
@@ -23,145 +23,129 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-
-function Invoke-Checked {
-    param([string]$Executable, [string[]]$Arguments)
-    & $Executable @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Command failed (exit $LASTEXITCODE): $Executable $($Arguments -join ' ')"
-    }
-}
-
-function Get-PythonInfo {
-    param([string]$Executable, [string[]]$Prefix = @())
-    # Missing versions in the Windows launcher write to stderr; try the next candidate.
-    $ErrorActionPreference = 'Continue'
-    try {
-        $probe = "import json,struct,sys; print(json.dumps({'version':sys.version.split()[0],'bits':struct.calcsize('P')*8,'supported':sys.version_info[:2] in [(3,11),(3,12)]}))"
-        $output = & $Executable @Prefix -c $probe 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            $info = ($output -join "`n") | ConvertFrom-Json
-            if ($info.supported -and $info.bits -eq 64) {
-                return [pscustomobject]@{ Executable = $Executable; Prefix = $Prefix; Version = $info.version }
-            }
-        }
-    } catch { return $null }
-    return $null
-}
-
-function Find-Python {
-    if ($PythonPath) {
-        $command = Get-Command -Name $PythonPath -CommandType Application -ErrorAction SilentlyContinue
-        if ($command) {
-            $result = Get-PythonInfo -Executable $command.Source
-            if ($result) { return $result }
-        }
-        throw 'PythonPath must point to a working 64-bit Python 3.11 or 3.12 executable.'
-    }
-    $launcher = Get-Command py.exe -CommandType Application -ErrorAction SilentlyContinue
-    if ($launcher) {
-        foreach ($version in @('-3.12', '-3.11')) {
-            $result = Get-PythonInfo -Executable $launcher.Source -Prefix @($version)
-            if ($result) { return $result }
-        }
-    }
-    foreach ($name in @('python.exe', 'python3.exe')) {
-        $command = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue
-        if ($command -and $command.Source -notlike '*\Microsoft\WindowsApps\*') {
-            $result = Get-PythonInfo -Executable $command.Source
-            if ($result) { return $result }
-        }
-    }
-    throw 'Install 64-bit Python 3.12 from https://www.python.org/downloads/windows/ (enable Python launcher and PATH), reopen the terminal, then retry. Python 3.11 is also supported.'
-}
-
+$savedEnvironment = @{}
+Get-ChildItem Env: | ForEach-Object { $savedEnvironment[$_.Name] = $_.Value }
+$savedProtocol = [Net.ServicePointManager]::SecurityProtocol
 Push-Location -LiteralPath $PSScriptRoot
 try {
     Write-Host '=== Vision Lab AI - Windows setup ===' -ForegroundColor Cyan
-    if ($env:OS -ne 'Windows_NT') { throw 'This script targets Windows. See README.md for the manual install commands.' }
-    if ($CpuCompatibility -and $Torch -ne 'cpu') { throw '-CpuCompatibility can only be used with -Torch cpu.' }
-    foreach ($required in @('backend/requirements.txt', 'frontend/package-lock.json', 'backend/scripts/prepare_install.py', 'windows-runtime.ps1')) {
-        if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Missing $required. Run setup from a complete clone of this repository." }
+    if ($env:OS -ne 'Windows_NT') { throw 'This script targets Windows. See README.md for manual installation.' }
+    foreach ($required in @('backend/requirements.txt', 'frontend/package-lock.json', 'backend/scripts/prepare_install.py', 'backend/scripts/check_install_env.py', 'windows-runtime.ps1', 'windows-setup.ps1')) {
+        if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Missing $required. Use a complete clone of this repository." }
     }
-    $basePython = Find-Python
-    Write-Host "Python $($basePython.Version) (64-bit): $($basePython.Executable)"
-
-    $node = Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue
-    $npm = Get-Command npm.cmd -CommandType Application -ErrorAction SilentlyContinue
-    if (-not $node -or -not $npm) {
-        throw 'Install Node.js 24 LTS (with npm) from https://nodejs.org/, reopen the terminal, then retry.'
-    }
-    $nodeVersion = & $node.Source --version
-    if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v(\d+)\.') { throw 'Could not read the Node.js version.' }
-    if ([int]$Matches[1] -lt 24) { throw "Node.js 24 or later is required; found $nodeVersion. Install Node.js 24 LTS and retry." }
-    Write-Host "Node.js $nodeVersion; npm: $($npm.Source)"
-    Write-Host "PyTorch package index: https://download.pytorch.org/whl/$Torch"
+    . (Join-Path $PSScriptRoot 'windows-setup.ps1')
     . (Join-Path $PSScriptRoot 'windows-runtime.ps1')
-    if ($InstallVCRuntime -and -not $CheckOnly) { Install-VisionLabVCRuntime }
-    Test-VisionLabVCRuntime
+    if ($CpuCompatibility) {
+        if ($Torch -notin @('auto', 'cpu')) { throw '-CpuCompatibility can only be used with -Torch auto/cpu.' }
+        $Torch = 'cpu'
+    }
 
+    Write-Host '[1/6] Checking hardware and selecting CPU/CUDA...' -ForegroundColor Yellow
+    $devices = @(Get-NvidiaDevices)
+    foreach ($gpu in $devices) { Write-Host "NVIDIA GPU $($gpu.Index): $($gpu.Name); driver $($gpu.Driver); VRAM $($gpu.MemoryMB) MiB; compute $($gpu.Capability)" }
+    $selectedTorch = Select-TorchBuild $Torch $devices
+    if ($Torch -eq 'auto' -and $selectedTorch -eq 'cpu') {
+        Write-Host 'Auto: no supported NVIDIA GPU/driver detected. Using CPU (AMD/Intel GPUs are not supported by this CUDA setup).'
+    }
+    Write-Host "PyTorch selection: $Torch -> $selectedTorch"
+    $hardware = Get-SetupHardware $PSScriptRoot
+    Test-SetupHardware $hardware $selectedTorch
+    foreach ($relative in @('backend/.venv', '.cache', '.tools', 'frontend/node_modules', 'backend/data', 'backend/data/torch_cache')) {
+        Assert-ProjectPath $PSScriptRoot (Join-Path $PSScriptRoot $relative)
+    }
+    if ($devices.Count -and $selectedTorch -ne 'cpu' -and $devices[0].MemoryMB -lt 4096) {
+        Write-Warning 'GPU has less than 4 GB VRAM: use a small batch size; large models may run out of memory.'
+    }
     $venvDirectory = Join-Path $PSScriptRoot 'backend/.venv'
     $venvPython = Join-Path $venvDirectory 'Scripts/python.exe'
-    if (Test-Path -LiteralPath $venvDirectory) {
-        $venvInfo = $null
-        if (Test-Path -LiteralPath $venvPython -PathType Leaf) { $venvInfo = Get-PythonInfo -Executable $venvPython }
-        if (-not $venvInfo) {
-            throw 'backend/.venv is incomplete or belongs to another machine. Rename that folder and rerun setup. Do not copy .venv between machines; keep backend/data.'
-        }
-        Write-Host "Reusing backend/.venv (Python $($venvInfo.Version))."
-    }
     if ($CheckOnly) {
-        Write-Host 'Prerequisites OK. CheckOnly did not install or modify anything.' -ForegroundColor Green
+        $pythonInfo = Find-ProjectPython $PSScriptRoot $PythonPath
+        $nodeInfo = Find-ProjectNode $PSScriptRoot
+        if ($pythonInfo) { Write-Host "Python available: $($pythonInfo.Version) ($($pythonInfo.Executable))" }
+        else { Write-Host 'Python 3.11/3.12 missing: normal setup will download Python 3.12 to .tools/python.' }
+        if ($nodeInfo) { Write-Host "Node.js $($nodeInfo.Version); npm $($nodeInfo.NpmVersion)" }
+        else { Write-Host 'Node.js 24/npm missing: normal setup will download them to .tools/node.' }
+        if (-not (Get-VisionLabVCRuntime).Ready) { Write-Host 'Visual C++ Runtime needs installation/update. Use -InstallVCRuntime on normal setup.' }
+        if (Test-Path -LiteralPath $venvPython -PathType Leaf) { Assert-ProjectVenv $PSScriptRoot }
+        Write-Host 'Preflight completed. No downloads, installations or dependency changes were performed.' -ForegroundColor Green
         exit 0
     }
 
+    # Refuse to modify packages underneath an active backend (or any Python in this venv).
+    $active = @(Get-CimInstance Win32_Process -Filter "Name = 'python.exe' OR Name = 'pythonw.exe'" | Where-Object {
+        $_.ExecutablePath -and $_.ExecutablePath.StartsWith($venvDirectory + '\', [StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($active.Count) { throw 'Close the running backend/Python processes in backend/.venv, then rerun setup.' }
+    Set-ProjectInstallEnvironment $PSScriptRoot
+    [Net.ServicePointManager]::SecurityProtocol = $savedProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $ProgressPreference = 'SilentlyContinue'
+    if ($InstallVCRuntime -or -not (Get-VisionLabVCRuntime).Ready) { Install-VisionLabVCRuntime }
+    Test-VisionLabVCRuntime
+
+    Write-Host '[2/6] Preparing local Python, Node.js and virtual environment...' -ForegroundColor Yellow
+    if (Test-Path -LiteralPath $venvDirectory) {
+        $reuse = $false
+        if (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+            $info = Get-PythonInfo $venvPython
+            if ($info) {
+                try { Assert-ProjectVenv $PSScriptRoot; $reuse = $true }
+                catch { Write-Warning $_.Exception.Message }
+            }
+        }
+        if (-not $reuse) {
+            # Preserve incompatible/moved environments, then create a new local one.
+            $backup = $venvDirectory + '.backup-' + [guid]::NewGuid().ToString('N')
+            Assert-ProjectPath $PSScriptRoot $backup
+            Move-Item -LiteralPath $venvDirectory -Destination $backup
+            Write-Warning "Incompatible environment preserved at $backup. A fresh backend/.venv will be created."
+        }
+    }
+    $basePython = Find-ProjectPython $PSScriptRoot $PythonPath
+    if (-not $basePython) { $basePython = Install-ProjectPython $PSScriptRoot }
+    Write-Host "Python $($basePython.Version) (64-bit): $($basePython.Executable)"
     if (-not (Test-Path -LiteralPath $venvPython -PathType Leaf)) {
-        Write-Host '[1/5] Creating backend/.venv...' -ForegroundColor Yellow
-        Invoke-Checked -Executable $basePython.Executable -Arguments (@($basePython.Prefix) + @('-m', 'venv', $venvDirectory))
+        Invoke-Checked $basePython.Executable (@($basePython.Prefix) + @('-I', '-B', '-m', 'venv', $venvDirectory))
     }
-    Write-Host '[2/5] Installing Python dependencies...' -ForegroundColor Yellow
-    Invoke-Checked -Executable $venvPython -Arguments @('-m', 'pip', 'install', '--upgrade', 'pip')
-    # If an existing environment uses a different wheel family, explicitly replace it.
-    $currentWheel = & $venvPython -c "import importlib.metadata as m; print(next((d.version for d in m.distributions() if d.metadata['Name'].lower()=='torch'), 'missing'))"
-    if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the existing Python environment.' }
-    $wheelMatches = ($Torch -eq 'cpu' -and $currentWheel -match '\+cpu$') -or ($Torch -ne 'cpu' -and $currentWheel -match "\+$Torch`$")
-    $torchPackages = @('torch', 'torchvision')
-    if ($CpuCompatibility) {
-        # Official paired CPU wheels; opt-in fallback for Windows DLL problems.
-        $torchPackages = @('torch==2.8.0', 'torchvision==0.23.0')
-        $wheelMatches = $wheelMatches -and $currentWheel -match '^2\.8\.0\+cpu$'
-        Write-Host 'CPU compatibility mode: torch 2.8.0 + torchvision 0.23.0.' -ForegroundColor Yellow
-    }
-    $torchArguments = @('-m', 'pip', 'install') + $torchPackages + @('--index-url', "https://download.pytorch.org/whl/$Torch")
-    if ($currentWheel -ne 'missing' -and -not $wheelMatches) {
-        Write-Host "Replacing existing PyTorch $currentWheel with the requested $Torch build. Close running backend processes first."
-        $torchArguments += '--force-reinstall'
-    }
-    Invoke-Checked -Executable $venvPython -Arguments $torchArguments
+    Assert-ProjectVenv $PSScriptRoot
+    $env:VIRTUAL_ENV = $venvDirectory
+    $env:PATH = (Join-Path $venvDirectory 'Scripts') + ';' + $env:PATH
+    $nodeInfo = Find-ProjectNode $PSScriptRoot
+    if (-not $nodeInfo) { $nodeInfo = Install-ProjectNode $PSScriptRoot }
+    $env:PATH = (Split-Path $nodeInfo.Node) + ';' + $env:PATH
+    Write-Host "Node.js $($nodeInfo.Version); npm $($nodeInfo.NpmVersion): $($nodeInfo.Node)"
+
+    Write-Host '[3/6] Installing Python packages exclusively into backend/.venv...' -ForegroundColor Yellow
+    Invoke-ProjectPip $PSScriptRoot @('install', '--no-user', '--upgrade', 'pip')
+    Install-ProjectTorch $PSScriptRoot $selectedTorch
     $requirements = if ($IncludeTests) { 'backend/requirements-dev.txt' } else { 'backend/requirements.txt' }
-    Invoke-Checked -Executable $venvPython -Arguments @('-m', 'pip', 'install', '-r', $requirements)
-    Invoke-Checked -Executable $venvPython -Arguments @('-m', 'pip', 'check')
-    Write-Host 'Checking PyTorch DLLs before installing/building the frontend...' -ForegroundColor Yellow
-    Invoke-Checked -Executable $venvPython -Arguments @('backend/scripts/prepare_install.py', '--torch', $Torch)
+    # Prevent requirements resolution from replacing the chosen torch/torchvision pair.
+    $constraints = Join-Path $PSScriptRoot '.cache/torch-constraints.txt'
+    @(Get-TorchPackages $selectedTorch) | Set-Content -LiteralPath $constraints -Encoding ASCII
+    Invoke-ProjectPip $PSScriptRoot @('install', '--no-user', '--upgrade', '-r', $requirements, '-c', $constraints)
+    Invoke-ProjectPip $PSScriptRoot @('check')
+    $selectedTorch = Confirm-ProjectTorch $PSScriptRoot $Torch $selectedTorch
+    @(Get-TorchPackages $selectedTorch) | Set-Content -LiteralPath $constraints -Encoding ASCII
 
-    Write-Host '[3/5] Installing frontend dependencies from package-lock.json...' -ForegroundColor Yellow
-    Invoke-Checked -Executable $npm.Source -Arguments @('--prefix', 'frontend', 'ci', '--include=dev')
-    Write-Host '[4/5] Building frontend...' -ForegroundColor Yellow
-    Invoke-Checked -Executable $npm.Source -Arguments @('--prefix', 'frontend', 'run', 'build')
-
-    Write-Host '[5/5] Checking backend and preparing data caches...' -ForegroundColor Yellow
-    $prepareArguments = @('backend/scripts/prepare_install.py', '--torch', $Torch)
+    Write-Host '[4/6] Installing frontend packages into frontend/node_modules...' -ForegroundColor Yellow
+    Invoke-Checked $nodeInfo.Npm @('--prefix', 'frontend', 'ci', '--include=dev', '--cache', (Join-Path $PSScriptRoot '.cache/npm'))
+    Write-Host '[5/6] Building frontend...' -ForegroundColor Yellow
+    Invoke-Checked $nodeInfo.Npm @('--prefix', 'frontend', 'run', 'build')
+    Write-Host '[6/6] Checking backend and preparing local data caches...' -ForegroundColor Yellow
+    $prepareArguments = @('-I', '-B', 'backend/scripts/prepare_install.py', '--torch', $selectedTorch)
     if (-not $SkipWeights) { $prepareArguments += '--prefetch-weights' }
     if ($PrefetchFlowers) { $prepareArguments += '--prefetch-flowers' }
-    Invoke-Checked -Executable $venvPython -Arguments $prepareArguments
-
-    Write-Host ''
-    Write-Host 'Setup completed. Run .\run.bat, then open http://localhost:8000.' -ForegroundColor Green
-    Write-Host 'For frontend development with hot reload, use the two-terminal commands in README.md.'
+    Invoke-Checked $venvPython $prepareArguments
+    Write-Host "Setup completed ($selectedTorch). Run .\run.bat, then open http://localhost:8000." -ForegroundColor Green
+    Write-Host 'Python packages: backend/.venv | Runtime downloads: .tools | Download/build caches: .cache'
 } catch {
-    Write-Host ''
     Write-Host "SETUP FAILED: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 } finally {
+    # Also restore the caller's environment when invoked directly as .\setup.ps1.
+    foreach ($entry in @(Get-ChildItem Env:)) {
+        if (-not $savedEnvironment.ContainsKey($entry.Name)) { [Environment]::SetEnvironmentVariable($entry.Name, $null, 'Process') }
+    }
+    foreach ($name in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process') }
+    [Net.ServicePointManager]::SecurityProtocol = $savedProtocol
     Pop-Location
 }

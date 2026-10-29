@@ -5,6 +5,10 @@ __pycache__/
 *.so
 .Python
 backend/.venv/
+backend/.venv.backup-*/
+.tools/
+.cache/
+.setup-smoke/
 .venv/
 env/
 venv/
