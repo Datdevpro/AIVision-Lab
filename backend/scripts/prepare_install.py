@@ -46,6 +46,7 @@ def main() -> None:
     parser.add_argument("--torch", choices=("cpu", "cu118", "cu124", "cu126", "cu128", "cu130"), default="cpu")
     parser.add_argument("--prefetch-weights", action="store_true")
     parser.add_argument("--prefetch-flowers", action="store_true")
+    parser.add_argument("--prefetch-office-fruit", action="store_true")
     parser.add_argument("--diagnose", action="store_true", help="Print OS/Python/package versions without importing torch")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
@@ -116,6 +117,15 @@ def main() -> None:
 
         root = ensure_flowers(settings, progress)
         print(f"Flower Photos cache ready: {root}", flush=True)
+    if args.prefetch_office_fruit:
+        from app.services.office_fruit import ensure_cache
+
+        def office_progress(**fields):
+            if fields.get("message"):
+                print(fields["message"], flush=True)
+
+        root = ensure_cache(settings, office_progress)
+        print(f"Office & Fruit cache ready: {root}", flush=True)
     print("Backend checks passed.", flush=True)
 
 

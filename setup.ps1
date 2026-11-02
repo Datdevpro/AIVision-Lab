@@ -15,6 +15,7 @@ param(
     [string]$PythonPath,
     [switch]$SkipWeights,
     [switch]$PrefetchFlowers,
+    [switch]$PrefetchOfficeFruit,
     [switch]$IncludeTests,
     [switch]$InstallVCRuntime,
     [switch]$CpuCompatibility,
@@ -134,6 +135,7 @@ try {
     $prepareArguments = @('-I', '-B', 'backend/scripts/prepare_install.py', '--torch', $selectedTorch)
     if (-not $SkipWeights) { $prepareArguments += '--prefetch-weights' }
     if ($PrefetchFlowers) { $prepareArguments += '--prefetch-flowers' }
+    if ($PrefetchOfficeFruit) { $prepareArguments += '--prefetch-office-fruit' }
     Invoke-Checked $venvPython $prepareArguments
     Write-Host "Setup completed ($selectedTorch). Run .\run.bat, then open http://localhost:8000." -ForegroundColor Green
     Write-Host 'Python packages: backend/.venv | Runtime downloads: .tools | Download/build caches: .cache'
