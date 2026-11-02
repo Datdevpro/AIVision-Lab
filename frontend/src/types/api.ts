@@ -99,6 +99,8 @@ export interface SampleDataset {
   name: string
   description: string
   source_url: string
+  license_url?: string
+  default_images_per_class?: number
   download_bytes: number
   cached: boolean
   min_classes: number

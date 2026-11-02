@@ -23,6 +23,7 @@ export const DatasetStudio: React.FC = () => {
     hasAttemptedTraining,
     theme,
     isSampleImporting,
+    capabilities,
   } = useLabStore()
 
   const [isCreatingClass, setIsCreatingClass] = useState(false)
@@ -33,6 +34,7 @@ export const DatasetStudio: React.FC = () => {
   const summary = dataset?.summary
   const totalImages = summary?.total_images || 0
   const sampleSource = dataset?.sample_source
+  const maxClasses = capabilities?.limits.max_classes ?? 12
 
   const generateNextClassName = () => {
     // Tên lớp mới sẽ có số thứ tự bằng tổng số lớp hiện có + 1, không phụ thuộc vào việc các lớp trước đó đã đổi tên hay chưa
@@ -45,7 +47,7 @@ export const DatasetStudio: React.FC = () => {
   }
 
   const handleAddQuickClass = async () => {
-    if (!currentProject || isCreatingClass || classes.length >= 10) return
+    if (!currentProject || isCreatingClass || classes.length >= maxClasses) return
     setIsCreatingClass(true)
     try {
       const defaultName = generateNextClassName()
@@ -123,8 +125,8 @@ export const DatasetStudio: React.FC = () => {
             <p className={`text-[10px] mt-1 ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>Dataset mẫu · Đã nhập {sampleSource.imported_images} ảnh / {sampleSource.class_ids.length} lớp</p>
             <details className="mt-2 text-[10px]">
               <summary className={`cursor-pointer font-semibold ${theme === 'light' ? 'text-emerald-700' : 'text-emerald-300'}`}>Thông tin nguồn</summary>
-              <p className="mt-2 leading-relaxed">Ảnh Flower Photos từ TensorFlow, giấy phép CC BY 2.0. Bạn có thể xem thông tin tác giả của từng ảnh bên dưới.</p>
-              <a href="https://www.tensorflow.org/tutorials/load_data/images" target="_blank" rel="noreferrer" className="inline-block mt-1 underline">Xem bộ dữ liệu gốc</a>
+              <p className="mt-2 leading-relaxed">{sampleSource.id === 'office-fruit' ? 'Ảnh Open Images đã cắt theo vật thể và cân bằng giữa các lớp. Ảnh CC BY 2.0; nhãn CC BY 4.0.' : 'Ảnh Flower Photos từ TensorFlow, giấy phép CC BY 2.0.'} Thông tin tác giả và nguồn từng ảnh được lưu cùng dự án.</p>
+              <a href={sampleSource.source_url} target="_blank" rel="noreferrer" className="inline-block mt-1 underline">Xem bộ dữ liệu gốc</a>
               <a href={`/api/projects/${dataset.project_id}/dataset-license`} className="inline-block ml-3 mt-1 underline">Bản quyền ảnh</a>
             </details>
           </div>
@@ -170,7 +172,7 @@ export const DatasetStudio: React.FC = () => {
         {/* Quick Add Class Button */}
         <button
           onClick={handleAddQuickClass}
-          disabled={classes.length >= 10 || isCreatingClass}
+          disabled={classes.length >= maxClasses || isCreatingClass}
           className={`w-full py-3 rounded-2xl border border-dashed transition flex items-center justify-center gap-2 text-xs font-semibold group disabled:opacity-40 disabled:cursor-not-allowed ${
             theme === 'light'
               ? 'border-slate-300 bg-white hover:border-sky-500 hover:bg-sky-50 text-slate-700 hover:text-sky-700 shadow-sm'
@@ -185,7 +187,7 @@ export const DatasetStudio: React.FC = () => {
           ) : (
             <>
               <Plus className="w-4 h-4 transition group-hover:scale-110" />
-              <span>Thêm lớp mới ({classes.length}/10)</span>
+              <span>Thêm lớp mới ({classes.length}/{maxClasses})</span>
             </>
           )}
         </button>

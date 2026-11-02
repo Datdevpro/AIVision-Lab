@@ -1,0 +1,19 @@
+Office & Fruit — Vision Lab curated subset of Open Images
+https://storage.googleapis.com/openimages/web/download_v7.html
+Images: CC BY 2.0 https://creativecommons.org/licenses/by/2.0/
+Annotations: Google LLC, CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Changes: object bounding-box crop with 4% context; source orientation correction; RGB conversion; resize <=512px; JPEG re-encoding.
+One crop per original photo; class labels translated to Vietnamese. No synthetic augmentation in this dataset.
+
+laptop/05224738c89f7a8b.jpg | Yosomono | P1150312 | https://www.flickr.com/photos/preetamrai/10438569206 | https://creativecommons.org/licenses/by/2.0/
+mouse/2977c4dfa069b0e9.jpg | Dev Bootcamp | Dev Bootcamp | https://www.flickr.com/photos/devbootcamp/16029420669 | https://creativecommons.org/licenses/by/2.0/
+keyboard/1855397ae93226d2.jpg | Sinchen.Lin | ducky-dk9008-shine-2 | https://www.flickr.com/photos/linsinchen/8038470348 | https://creativecommons.org/licenses/by/2.0/
+desk/c83dba5e2660c0ed.jpg | Milton Jung | Produção do @jornaldacbn em busca da notícia #radio #cbn | https://www.flickr.com/photos/cbnsp/12360674195 | https://creativecommons.org/licenses/by/2.0/
+monitor/a3939a09aea187e6.jpg | Ministerio TIC Colombia | Telemedicina | https://www.flickr.com/photos/ministerio_tic/6835852026 | https://creativecommons.org/licenses/by/2.0/
+watch/a7fabb3bd4936e1d.jpg | vix | watchy | https://www.flickr.com/photos/vix/7993780397 | https://creativecommons.org/licenses/by/2.0/
+banana/0c59a8e4469ef09f.jpg | Calvert Cafe &amp; Catering | Fresh fruit | https://www.flickr.com/photos/calvertcaters/3547183044 | https://creativecommons.org/licenses/by/2.0/
+apple/533563a9ff6cf2e6.jpg | Natesh Ramasamy | Food For God(Thought?)!!! | https://www.flickr.com/photos/ramnaganat/10084373336 | https://creativecommons.org/licenses/by/2.0/
+watermelon/5ee1459e77fb677a.jpg | ニャホ | カラスウリ | https://www.flickr.com/photos/47919766@N08/15373802596 | https://creativecommons.org/licenses/by/2.0/
+orange/3c22df7047a1dc35.jpg | sonictk | Wheel Of Treats | https://www.flickr.com/photos/sonictk/397397451/ | https://creativecommons.org/licenses/by/2.0/
+pear/51a4941f30288a46.jpg | Apple and Pear Australia Ltd | ANP-0118 pear (to be marekted under the name Lanya®)_MG_4993 | https://www.flickr.com/photos/applesnpearsau/16427992986 | https://creativecommons.org/licenses/by/2.0/
+phone/2b04a8212caefafe.jpg | India7 Network | Samsung Galaxy Y Duos S6102 | https://www.flickr.com/photos/india_7/12799969194 | https://creativecommons.org/licenses/by/2.0/

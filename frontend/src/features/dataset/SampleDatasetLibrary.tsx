@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertCircle, ArrowRight, BookOpen, Check, CloudDownload, Flower2, HardDrive, Loader2, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, BookOpen, Check, CloudDownload, Database, HardDrive, Loader2, X } from 'lucide-react'
 import { api } from '@/services/api'
 import { useLabStore } from '@/store/useLabStore'
 import type { SampleDataset, SampleImportJob } from '@/types/api'
@@ -12,8 +12,10 @@ interface Props { open: boolean; onClose: () => void }
 export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
   const { theme, config, isTraining, isSampleImporting, setSampleImporting, activateImportedProject } = useLabStore()
   const dialog = useRef<HTMLDialogElement>(null)
-  const [dataset, setDataset] = useState<SampleDataset | null>(null)
-  const [selected, setSelected] = useState(['daisy', 'dandelion', 'roses', 'sunflowers', 'tulips'])
+  const [datasets, setDatasets] = useState<SampleDataset[]>([])
+  const [datasetId, setDatasetId] = useState('office-fruit')
+  const dataset = datasets.find(d => d.id === datasetId) ?? null
+  const [selected, setSelected] = useState<string[]>([])
   const [count, setCount] = useState('100')
   const [error, setError] = useState<string | null>(null)
   const [catalogLoading, setCatalogLoading] = useState(false)
@@ -23,14 +25,23 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
   const [pollAttempt, setPollAttempt] = useState(0)
   const light = theme === 'light'
 
+  const chooseDataset = (next: SampleDataset) => {
+    setDatasetId(next.id)
+    const ids = next.classes.slice(0, next.max_classes).map(c => c.id)
+    setSelected(ids)
+    setCount(String(Math.min(next.default_images_per_class ?? 100, next.max_images_per_class,
+      Math.floor(next.max_images_per_project / Math.max(1, ids.length)))))
+    setError(null)
+  }
+
   const loadCatalog = async () => {
     setCatalogLoading(true)
     if (!jobId) setError(null)
     try {
       const result = await api.getSampleDatasets()
-      const flowers = result.datasets.find(d => d.id === 'flowers')
-      if (!flowers) throw new Error('Chưa có Flower Photos trong thư viện.')
-      setDataset(flowers)
+      if (!result.datasets.length) throw new Error('Thư viện chưa có dataset mẫu.')
+      setDatasets(result.datasets)
+      if (!dataset) chooseDataset(result.datasets.find(d => d.id === datasetId) ?? result.datasets[0])
     } catch (e) { setError(e instanceof Error ? e.message : 'Không tải được thư viện dataset.') }
     finally { setCatalogLoading(false) }
   }
@@ -85,7 +96,7 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
   const maxPerClass = dataset ? Math.min(dataset.max_images_per_class,
     Math.floor(dataset.max_images_per_project / Math.max(1, selected.length))) : 500
   const selectionError = !dataset ? null
-    : selected.length < dataset.min_classes ? `Chọn ít nhất ${dataset.min_classes} loại hoa.`
+    : selected.length < dataset.min_classes ? `Chọn ít nhất ${dataset.min_classes} lớp.`
     : selected.length > dataset.max_classes ? `Ứng dụng cho phép tối đa ${dataset.max_classes} lớp.`
     : !Number.isInteger(imagesPerClass) || imagesPerClass < dataset.min_images_per_class || imagesPerClass > maxPerClass
     ? `Chọn từ ${dataset.min_images_per_class} đến ${maxPerClass} ảnh/lớp.` : null
@@ -103,7 +114,7 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
     setError(null)
     setJob(null)
     try {
-      const result = await api.importFlowers(selected, imagesPerClass, config.seed)
+      const result = await api.importSampleDataset(dataset.id, dataset.name, selected, imagesPerClass, config.seed)
       sessionStorage.setItem(PENDING_KEY, result.id)
       setJob(result)
       setJobId(result.id)
@@ -129,20 +140,29 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
         </div>
 
         <div className="p-6 space-y-5">
+          {datasets.length > 1 && <div role="group" aria-label="Chọn bộ dataset" className="grid sm:grid-cols-2 gap-3">
+            {[...datasets].sort((a, b) => Number(b.id === 'office-fruit') - Number(a.id === 'office-fruit')).map(item =>
+              <button key={item.id} type="button" disabled={busy || !!jobId} aria-pressed={item.id === datasetId}
+                onClick={() => chooseDataset(item)}
+                className={`rounded-2xl border p-4 text-left transition disabled:opacity-60 ${item.id === datasetId ? 'border-emerald-500 bg-emerald-500/10' : light ? 'border-slate-200 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5'}`}>
+                <div className="text-sm font-bold">{item.name}</div>
+                <div className={`mt-1 text-xs ${light ? 'text-slate-600' : 'text-slate-400'}`}>{item.classes.length} lớp · {item.id === 'office-fruit' ? 'Đồ công nghệ, văn phòng và trái cây' : 'Các loại hoa'}</div>
+              </button>)}
+          </div>}
           {catalogLoading && !dataset && <p role="status" className="flex items-center gap-2 text-sm"><Loader2 className="animate-spin" size={16} />Đang tải thư viện…</p>}
           {dataset && <>
             <div className="flex flex-wrap justify-between items-start gap-3">
-              <div><h3 className="font-bold text-base flex items-center gap-2"><Flower2 size={18} className="text-emerald-500" />Flower Photos</h3>
+              <div><h3 className="font-bold text-base flex items-center gap-2"><Database size={18} className="text-emerald-500" />{dataset.name}</h3>
                 <p className={`text-xs mt-2 max-w-lg leading-relaxed ${light ? 'text-slate-600' : 'text-slate-400'}`}>{dataset.description}</p></div>
               <span className={`inline-flex gap-1.5 items-center rounded-full px-3 py-1.5 text-[11px] font-semibold ${dataset.cached ? 'bg-emerald-500/10 text-emerald-600' : light ? 'bg-sky-50 text-sky-700' : 'bg-sky-500/10 text-sky-300'}`}>
-                {dataset.cached ? <HardDrive size={13} /> : <CloudDownload size={13} />}{dataset.cached ? 'Có sẵn offline' : 'Tải lần đầu · 218 MiB'}
+                {dataset.cached ? <HardDrive size={13} /> : <CloudDownload size={13} />}{dataset.cached ? 'Có sẵn offline' : `Tải lần đầu · tối đa ${Math.ceil(dataset.download_bytes / 1024 / 1024)} MiB`}
               </span>
             </div>
 
             <fieldset disabled={busy || !!jobId} className="space-y-3 disabled:opacity-60">
-              <legend className="sr-only">Chọn loại hoa</legend>
+              <legend className="sr-only">Chọn lớp dữ liệu</legend>
               <div className="flex justify-between items-center gap-2">
-                <span className="text-xs font-semibold">Chọn loại hoa <span className={light ? 'text-slate-500' : 'text-slate-400'}>({selected.length}/5)</span></span>
+                <span className="text-xs font-semibold">Chọn lớp <span className={light ? 'text-slate-500' : 'text-slate-400'}>({selected.length}/{dataset.classes.length})</span></span>
                 <button type="button" onClick={() => setSelected(selected.length === dataset.classes.length ? [] : dataset.classes.slice(0, dataset.max_classes).map(c => c.id))}
                   className={`text-xs font-semibold ${light ? 'text-sky-700' : 'text-cyan-300'}`}>{selected.length === dataset.classes.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}</button>
               </div>
@@ -151,7 +171,7 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
                   const checked = selected.includes(cls.id)
                   return <label key={cls.id} className={`relative rounded-2xl border overflow-hidden cursor-pointer transition focus-within:ring-2 focus-within:ring-sky-500 ${checked ? light ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-400/70 bg-emerald-500/10' : light ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[0.02]'}`}>
                     <img src={cls.preview_url} alt={cls.name} className="w-full aspect-[4/3] object-cover" />
-                    <input type="checkbox" aria-label={cls.name} checked={checked} onChange={() => setSelected(previous => checked ? previous.filter(key => key !== cls.id) : [...previous, cls.id])}
+                    <input type="checkbox" aria-label={cls.name} checked={checked} disabled={!checked && selected.length >= dataset.max_classes} onChange={() => setSelected(previous => checked ? previous.filter(key => key !== cls.id) : [...previous, cls.id])}
                       className="absolute top-2.5 right-2.5 w-4 h-4 accent-emerald-500" />
                     <div className="p-3"><div className="text-xs font-bold">{cls.name}</div><div className={`text-[10px] mt-1 ${light ? 'text-slate-500' : 'text-slate-400'}`}>{cls.available} ảnh có sẵn</div></div>
                   </label>
@@ -178,7 +198,7 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
               </div>
             </div>
 
-            {!dataset.cached && !busy && <p className={`text-[11px] leading-relaxed ${light ? 'text-slate-500' : 'text-slate-400'}`}>Lần đầu cần tải bộ gốc khoảng 218 MiB, kể cả khi chỉ chọn một phần ảnh. Các lần sau dùng lại dữ liệu đã lưu trên backend.</p>}
+            {!dataset.cached && !busy && <p className={`text-[11px] leading-relaxed ${light ? 'text-slate-500' : 'text-slate-400'}`}>{dataset.id === 'flowers' ? 'Lần đầu cần tải bộ gốc khoảng 218 MiB, kể cả khi chỉ chọn một phần ảnh.' : 'Chỉ tải ảnh cho các lớp đã chọn; ảnh được tự kiểm tra checksum và cắt theo vật thể.'} Các lần sau dùng lại dữ liệu đã lưu trên backend, không cần Internet.</p>}
             {selectionError && !busy && <p role="status" className="text-xs text-amber-600">{selectionError}</p>}
             {isTraining && <p className="text-xs text-amber-600">Đợi phiên huấn luyện hiện tại kết thúc trước khi tạo dự án mẫu.</p>}
           </>}
@@ -188,7 +208,7 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
             <div role="progressbar" aria-label="Tiến độ chuẩn bị dataset" aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100} className="h-1.5 rounded-full bg-slate-500/15 overflow-hidden">
               <div className={`h-full bg-sky-500 transition-all ${job?.status === 'extracting' || job?.status === 'preparing' ? 'w-1/3 animate-pulse' : ''}`} style={job?.status === 'downloading' || job?.status === 'importing' || job?.status === 'completed' ? { width: `${percent}%` } : undefined} />
             </div>
-            {job?.status === 'downloading' && <p className="text-[11px]">{downloadedMB} / 218 MiB</p>}
+            {job?.status === 'downloading' && <p className="text-[11px]">{downloadedMB} / {Math.ceil(job.download_bytes / 1024 / 1024)} MiB</p>}
             <p className={`text-[11px] ${light ? 'text-slate-500' : 'text-slate-400'}`}>Bạn có thể đóng hộp thoại; quá trình vẫn tiếp tục.</p>
           </div>}
           {error && <div role="alert" className={`p-3 rounded-xl text-xs flex items-start gap-2 ${light ? 'bg-rose-50 text-rose-700' : 'bg-rose-500/10 text-rose-300'}`}>
@@ -201,8 +221,8 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
 
         <div className={`flex flex-wrap justify-between items-center gap-4 px-6 py-4 border-t ${light ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-black/10'}`}>
           <div className={`text-[11px] ${light ? 'text-slate-500' : 'text-slate-400'}`}>
-            <a href="https://www.tensorflow.org/tutorials/load_data/images" target="_blank" rel="noreferrer" className="hover:underline">Nguồn: TensorFlow</a>
-            {' · '}<a href="/datasets/flowers/LICENSE.txt" target="_blank" rel="noreferrer" className="hover:underline">Ảnh CC BY · Tác giả</a>
+            {dataset && <><a href={dataset.source_url} target="_blank" rel="noreferrer" className="hover:underline">Nguồn: {dataset.id === 'flowers' ? 'TensorFlow' : 'Open Images'}</a>
+            {' · '}<a href={dataset.license_url ?? `/datasets/${dataset.id}/LICENSE.txt`} target="_blank" rel="noreferrer" className="hover:underline">Ảnh CC BY · Tác giả</a></>}
           </div>
           <button type="submit" disabled={!dataset || !!selectionError || busy || isTraining || !!jobId}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition disabled:opacity-45 disabled:cursor-not-allowed">
