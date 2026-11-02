@@ -23,7 +23,7 @@ Vision Lab AI giúp học sinh và giáo viên thực hành toàn bộ quy trìn
 
 ## Tính năng
 
-- **Dataset Studio:** quản lý dự án và lớp ảnh, upload hoặc chụp webcam, chọn dataset mẫu Flower Photos, chia tập train/validation và cảnh báo vấn đề chất lượng dữ liệu.
+- **Dataset Studio:** quản lý dự án và lớp ảnh, upload hoặc chụp webcam, chọn dataset mẫu Flower Photos hoặc Office & Fruit, chia tập train/validation và cảnh báo vấn đề chất lượng dữ liệu.
 - **Training thực:** tùy chỉnh siêu tham số, bật augmentation, theo dõi batch/epoch qua WebSocket và hủy phiên đang chạy.
 - **Network Playground:** sơ đồ neuron tương tác, hiệu ứng lan truyền xuôi/ngược đồng bộ với trạng thái training và các chỉ số thực.
 - **Live Inference:** thử ảnh tải lên hoặc webcam với mô hình đã huấn luyện, xem xác suất theo lớp và ghi nhận phản hồi dự đoán.
@@ -42,6 +42,28 @@ Vision Lab AI giúp học sinh và giáo viên thực hành toàn bộ quy trìn
 | **Network Architect** — Advanced | CNN học từ đầu; ảnh 64 × 64 | Thiết kế 1–4 khối convolution và số filter từng khối, kết hợp các thiết lập phân loại. |
 
 Beginner và Intermediate phù hợp để bắt đầu với ít ảnh. Advanced dành cho việc tìm hiểu kiến trúc CNN; hiệu quả phụ thuộc dữ liệu và cấu hình, không mặc định cao hơn mô hình học sẵn.
+
+## Dataset mẫu Office & Fruit
+
+Bộ phân loại ảnh gồm **12 lớp × 200 ảnh = 2.400 ảnh thực tế**: laptop, chuột máy tính, bàn phím, bàn làm việc, màn hình máy tính, đồng hồ đeo tay, điện thoại di động; chuối, táo, dưa hấu, cam và lê. Các nhóm được chọn từ Open Images, cắt theo bounding box, chuyển RGB, thu nhỏ tối đa 512px và lọc ảnh hỏng, ảnh quá nhỏ, ảnh trùng/gần trùng. Mỗi ảnh nguồn chỉ đóng góp một ảnh cắt cho toàn bộ bộ dữ liệu; các ảnh không phải bản augmentation để tăng số lượng.
+
+Trong **Dataset Studio → Thư viện dataset mẫu → Office & Fruit**, giữ tất cả 12 lớp hoặc chọn nhóm lớp mong muốn, chọn 20–200 ảnh/lớp rồi bấm **Tạo dự án từ dataset**. Ứng dụng tạo dự án riêng, không ghi đè dự án cũ. Với 200 ảnh/lớp và validation 20%, có 1.920 ảnh train và 480 ảnh validation; augmentation chỉ áp dụng lên train khi huấn luyện. Đây là dữ liệu **phân loại một nhãn mỗi ảnh**, không phải mô hình dò nhiều vật thể trong một khung hình.
+
+Ảnh chỉ tải lần đầu cho các lớp được chọn; lần sau dùng offline. Giáo viên có thể chuẩn bị toàn bộ thư viện trước giờ học:
+
+```powershell
+.\setup.bat -PrefetchOfficeFruit
+# Hoặc nếu đã setup xong:
+.\backend\.venv\Scripts\python.exe backend/scripts/prepare_install.py --torch cpu --prefetch-office-fruit
+```
+
+Ở lệnh thứ hai, thay `cpu` bằng build đang cài (`cu118`, `cu124`, `cu128`…) nếu dùng CUDA. Cache nằm tại `backend/data/sample_datasets/office-fruit` (hoặc trong `VISIONLAB_DATA_DIR` tương ứng). Có thể sao chép nguyên thư mục cache sang máy học sinh để không cần mạng. Gói `office-fruit-v1.zip` được tạo khi biên soạn bộ dữ liệu, gồm ảnh theo lớp, manifest, checksum và thông tin tác giả; giải nén vào cùng thư mục cache, giữ cả các file `.json` và `.ready.json`. Không cần sao chép database để dùng thư viện trên máy khác.
+
+Manifest nhỏ được lưu trong `backend/app/data/office-fruit-v1.json`; ảnh và cache lớn không đưa vào source. Nguồn từng ảnh, bounding box, SHA-256, tác giả và giấy phép được giữ trong manifest và dự án; xuất lớp ảnh cũng kèm provenance. Ảnh được nguồn liệt kê là **CC BY 2.0**, annotation **CC BY 4.0**; xem [Open Images](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) và file `DATASET-LICENSE.txt` khi xuất dữ liệu.
+
+Dành cho người bảo trì muốn biên soạn lại: chạy `backend/scripts/build_office_fruit.py` để lấy hai bảng annotation/metadata chính thức (~2,9 GB, lưu trong `.cache/dataset-build`), sau đó chạy lại với `--curate`. Học sinh không cần chạy bước này.
+
+Gói offline có thêm `SPLITS.csv` (80/20, seed 42). Cách chia mặc định dựa trên ID ảnh nguồn, nên giữ nguyên khi nhập lại cùng lựa chọn ảnh; thay seed/tỉ lệ validation sẽ tạo cách chia khác. Sau khi biên soạn, có thể chạy `backend/scripts/verify_office_fruit.py` để kiểm tra checksum, số ảnh, ảnh trùng, kích thước, cách chia và giải nén/dùng lại hoàn toàn offline. `build_office_fruit.py --audit` tạo bảng ảnh để xem xét trực quan; các ảnh nguồn bị loại thủ công được ghi trong `office-fruit-exclusions.json`.
 
 ## Bắt đầu nhanh
 
@@ -217,7 +239,8 @@ Thiết lập biến môi trường trước khi chạy backend. Các giá trị
 | `VISIONLAB_DEVICE` | `auto` | Thiết bị training: `auto`, `cpu` hoặc `cuda` |
 | `VISIONLAB_INFERENCE_DEVICE` | `auto` | Thiết bị dự đoán: `auto` hoặc `cpu` |
 | `VISIONLAB_MAX_IMAGES_PER_CLASS` | `500` | Giới hạn ảnh mỗi lớp |
-| `VISIONLAB_MAX_IMAGES_PER_PROJECT` | `2000` | Giới hạn ảnh mỗi dự án |
+| `VISIONLAB_MAX_IMAGES_PER_PROJECT` | `5000` | Giới hạn ảnh mỗi dự án |
+| `VISIONLAB_MAX_CLASSES` | `12` | Giới hạn lớp mỗi dự án; đủ cho Office & Fruit 12 lớp |
 | `VISIONLAB_MAX_EPOCHS` | `50` | Giới hạn số epoch |
 
 Ví dụ chạy training và inference trên CPU:
