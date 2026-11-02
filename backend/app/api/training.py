@@ -12,7 +12,7 @@ from sqlmodel import Session
 from app.api.deps import token_ok
 from app.core.config import get_settings
 from app.core.db import get_session
-from app.core.errors import not_found
+from app.core.errors import bad_request, not_found
 from app.schemas.api import EstimateRequest, JobOut, TrainingStartRequest
 from app.schemas.training_config import resolve_config, estimate_params
 from app.services.insights_service import generate_insights
@@ -34,10 +34,11 @@ def start_training(body: TrainingStartRequest, session: SessionDep):
 @router.post("/training/estimate")
 def estimate(body: EstimateRequest):
     """Parameter-count estimate shown before training (no weights are loaded)."""
+    if body.num_classes > get_settings().max_classes:
+        raise bad_request("TOO_MANY_CLASSES", f"Tối đa {get_settings().max_classes} lớp.")
     try:
         cfg = resolve_config(body.config, allow_test_backbone=get_settings().allow_test_backbone)
     except ValueError as exc:
-        from app.core.errors import bad_request
         raise bad_request("INVALID_CONFIG", str(exc)) from exc
     est = estimate_params(cfg, body.num_classes)
     limit = get_settings().max_custom_cnn_params

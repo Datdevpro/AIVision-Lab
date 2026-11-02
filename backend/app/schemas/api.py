@@ -96,7 +96,7 @@ class TrainingStartRequest(BaseModel):
 
 class EstimateRequest(BaseModel):
     config: TrainingConfig = Field(default_factory=TrainingConfig)
-    num_classes: int = Field(2, ge=2, le=10)
+    num_classes: int = Field(2, ge=2, le=1000)
 
 
 class JobOut(BaseModel):

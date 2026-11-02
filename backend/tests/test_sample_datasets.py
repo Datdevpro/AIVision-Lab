@@ -88,7 +88,7 @@ def test_offline_import_creates_selected_classes_and_preserves_existing_project(
     {"class_ids": ["daisy", "daisy"]},
     {"class_ids": ["daisy", "unknown"]},
     {"class_ids": ["daisy", "roses"], "images_per_class": 0},
-    {"class_ids": [c[0] for c in samples.FLOWER_CLASSES], "images_per_class": 500},
+    {"class_ids": [c[0] for c in samples.FLOWER_CLASSES], "images_per_class": 501},
 ])
 def test_invalid_selection_does_not_create_project(client, payload):
     before = client.get("/api/projects").json()
