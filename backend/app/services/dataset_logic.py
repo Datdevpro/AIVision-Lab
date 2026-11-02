@@ -48,8 +48,15 @@ def compute_split(items: list[Item], strategy: str, val_split: float, seed: int)
         else:
             by_class.setdefault(it.class_id, []).append(it)
     for class_id, group in by_class.items():
-        group = sorted(group, key=lambda i: i.id)
-        random.Random(f"{seed}:{class_id}").shuffle(group)
+        sample_keys = {i.session_id.split(":")[1] for i in group
+                       if i.session_id and i.session_id.startswith("openimages:") and len(i.session_id.split(":")) == 3}
+        stable_sample = len(sample_keys) == 1 and all(
+            i.session_id and i.session_id.startswith("openimages:") and len(i.session_id.split(":")) == 3 for i in group)
+        # A re-import has new DB UUIDs. Keep the educational dataset split stable
+        # using its source photo IDs, matching the portable package's SPLITS.csv.
+        group = sorted(group, key=lambda i: i.session_id if stable_sample else i.id)
+        split_key = next(iter(sample_keys)) if stable_sample else class_id
+        random.Random(f"{seed}:{split_key}").shuffle(group)
         n = len(group)
         n_val = 0 if n < 2 else min(n - 1, max(1, round(n * val_split)))
         for idx, it in enumerate(group):

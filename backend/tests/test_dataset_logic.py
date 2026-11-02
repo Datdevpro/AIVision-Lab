@@ -2,6 +2,17 @@
 from app.services import dataset_logic as L
 
 
+def test_curated_source_split_is_stable_across_reimports():
+    first = [L.Item(id=f"old-{i}", class_id="old-class", subset="train",
+                    session_id=f"openimages:laptop:{i:016x}") for i in range(20)]
+    second = [L.Item(id=f"new-{19-i}", class_id="new-class", subset="train",
+                     session_id=f"openimages:laptop:{i:016x}") for i in range(20)]
+    a = L.compute_split(first, "random", .2, 42)
+    b = L.compute_split(second, "random", .2, 42)
+    assert {i.session_id: a[i.id] for i in first} == {i.session_id: b[i.id] for i in second}
+    assert list(a.values()).count("val") == 4
+
+
 def _items(per_class=10, classes=("a", "b"), subset="train", session=None):
     out = []
     for c in classes:
