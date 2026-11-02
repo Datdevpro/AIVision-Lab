@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.services.sample_datasets import flowers_catalog, sample_imports
+from app.core.config import get_settings
+from app.services import office_fruit
 
 router = APIRouter(tags=["sample datasets"])
 
@@ -14,14 +16,26 @@ class FlowerImportRequest(BaseModel):
     project_name: str = Field("Flower Photos", min_length=1, max_length=80)
 
 
+class OfficeFruitImportRequest(BaseModel):
+    class_ids: list[str] = Field(min_length=2, max_length=len(office_fruit.CLASSES))
+    images_per_class: int = Field(200, ge=20, le=200)
+    seed: int = Field(42, ge=0, le=2**31 - 1)
+    project_name: str = Field("Office & Fruit", min_length=1, max_length=80)
+
+
 @router.get("/sample-datasets")
 def catalog():
-    return {"datasets": [flowers_catalog()]}
+    return {"datasets": [flowers_catalog(), office_fruit.catalog(get_settings())]}
 
 
 @router.post("/sample-datasets/flowers/import", status_code=202)
 def start_import(body: FlowerImportRequest):
     return sample_imports.start(body.class_ids, body.images_per_class, body.seed, body.project_name)
+
+
+@router.post("/sample-datasets/office-fruit/import", status_code=202)
+def start_office_fruit_import(body: OfficeFruitImportRequest):
+    return sample_imports.start(body.class_ids, body.images_per_class, body.seed, body.project_name, "office-fruit")
 
 
 @router.get("/sample-datasets/imports/{job_id}")

@@ -21,6 +21,7 @@ from app.core.db import get_engine
 from app.core.errors import AppError, bad_request, conflict, not_found
 from app.models.db_models import ImageClass, ImageRecord, Project, new_id
 from app.services.image_ingest import ImageRejected, process_image
+from app.services import office_fruit
 
 logger = logging.getLogger("uvicorn.error.visionlab")
 FLOWERS_URL = "https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz"
@@ -238,17 +239,26 @@ class SampleImportManager:
                 raise not_found("phiên import; backend có thể vừa khởi động lại")
             return copy.deepcopy(self._jobs[job_id])
 
-    def start(self, class_ids: list[str], images_per_class: int, seed: int, project_name: str) -> dict:
+    def start(self, class_ids: list[str], images_per_class: int, seed: int, project_name: str,
+              dataset_id: str = "flowers") -> dict:
         settings = get_settings()
-        validate_selection(class_ids, images_per_class, settings)
+        if dataset_id == "flowers":
+            validate_selection(class_ids, images_per_class, settings)
+            importer, name, download_bytes = import_flowers, "Flower Photos", FLOWERS_BYTES
+        elif dataset_id == "office-fruit":
+            office_fruit.validate_selection(class_ids, images_per_class, settings)
+            importer, name = office_fruit.import_project, office_fruit.NAME
+            download_bytes = office_fruit.catalog(settings)["download_bytes"]
+        else:
+            raise not_found("dataset mẫu")
         with self._lock:
             if any(j["status"] not in ("completed", "failed") for j in self._jobs.values()):
                 raise conflict("SAMPLE_IMPORT_BUSY", "Backend đang chuẩn bị một dataset mẫu. Vui lòng đợi hoàn tất.")
             while len(self._jobs) >= 20:
                 del self._jobs[next(iter(self._jobs))]
             job_id = new_id()
-            job = {"id": job_id, "status": "preparing", "message": "Đang chuẩn bị Flower Photos…",
-                   "downloaded_bytes": 0, "download_bytes": FLOWERS_BYTES, "imported_images": 0,
+            job = {"id": job_id, "dataset_id": dataset_id, "status": "preparing", "message": f"Đang chuẩn bị {name}…",
+                   "downloaded_bytes": 0, "download_bytes": download_bytes, "imported_images": 0,
                    "total_images": len(class_ids) * images_per_class, "project_id": None, "error": None}
             self._jobs[job_id] = job
             snapshot = copy.deepcopy(job)
@@ -259,10 +269,10 @@ class SampleImportManager:
 
         def run():
             try:
-                project_id = import_flowers(settings, class_ids, images_per_class, seed, project_name, progress)
+                project_id = importer(settings, class_ids, images_per_class, seed, project_name, progress)
                 progress(status="completed", project_id=project_id, message="Dataset đã sẵn sàng để huấn luyện.")
             except Exception as exc:
-                logger.exception("Flower Photos import failed: %s", job_id)
+                logger.exception("%s import failed: %s", name, job_id)
                 message = exc.message if isinstance(exc, AppError) else "Không thể import dataset. Kiểm tra dung lượng ổ đĩa và thử lại."
                 progress(status="failed", message=message, error=message)
 

@@ -177,6 +177,9 @@ def export_class_images(session: Session, class_id: str) -> tuple[str, bytes]:
             writer.writerow(("exported_filename", "original_dataset_filename"))
             writer.writerows(source_rows)
             zf.writestr("IMAGE-SOURCES.csv", mapping.getvalue().encode("utf-8-sig"))
+            provenance = project_dir(c.project_id, settings) / "IMAGE-PROVENANCE.json"
+            if provenance.is_file():
+                zf.write(provenance, arcname="IMAGE-PROVENANCE.json")
     buf.seek(0)
     return f"{c.name}_samples.zip", buf.getvalue()
 
