@@ -1,4 +1,4 @@
-"""Curated sample datasets, imported into isolated new projects."""
+"""Curated sample datasets for new or existing empty projects."""
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,7 @@ router = APIRouter(tags=["sample datasets"])
 
 
 class FlowerImportRequest(BaseModel):
+    target_project_id: str | None = Field(None, min_length=1, max_length=80)
     class_ids: list[str] = Field(min_length=2, max_length=5)
     images_per_class: int = Field(100, ge=20, le=500)
     seed: int = Field(42, ge=0, le=2**31 - 1)
@@ -17,6 +18,7 @@ class FlowerImportRequest(BaseModel):
 
 
 class OfficeFruitImportRequest(BaseModel):
+    target_project_id: str | None = Field(None, min_length=1, max_length=80)
     class_ids: list[str] = Field(min_length=2, max_length=len(office_fruit.CLASSES))
     images_per_class: int = Field(200, ge=20, le=200)
     seed: int = Field(42, ge=0, le=2**31 - 1)
@@ -30,12 +32,14 @@ def catalog():
 
 @router.post("/sample-datasets/flowers/import", status_code=202)
 def start_import(body: FlowerImportRequest):
-    return sample_imports.start(body.class_ids, body.images_per_class, body.seed, body.project_name)
+    return sample_imports.start(body.class_ids, body.images_per_class, body.seed, body.project_name,
+                                target_project_id=body.target_project_id)
 
 
 @router.post("/sample-datasets/office-fruit/import", status_code=202)
 def start_office_fruit_import(body: OfficeFruitImportRequest):
-    return sample_imports.start(body.class_ids, body.images_per_class, body.seed, body.project_name, "office-fruit")
+    return sample_imports.start(body.class_ids, body.images_per_class, body.seed, body.project_name, "office-fruit",
+                                target_project_id=body.target_project_id)
 
 
 @router.get("/sample-datasets/imports/{job_id}")

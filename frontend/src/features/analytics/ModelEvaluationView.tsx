@@ -13,13 +13,14 @@ import { api } from '@/services/api'
 import { useLabStore } from '@/store/useLabStore'
 import { formatNumber, formatPercent } from '@/lib/utils'
 import { ConfusionMatrixChart } from './ConfusionMatrixChart'
+import type { Experiment } from '@/types/api'
 
-export const ModelEvaluationView: React.FC = () => {
+export const ModelEvaluationView: React.FC<{ experiment?: Experiment; split?: 'validation' | 'test' }> = ({ experiment, split = 'validation' }) => {
   const { activeExperiment, setSelectedLessonKey, theme } = useLabStore()
+  const selectedExperiment = experiment ?? activeExperiment
+  const evaluation = selectedExperiment?.evaluation?.[split]
 
-  const evaluation = activeExperiment?.evaluation?.validation
-
-  if (!activeExperiment || !evaluation) {
+  if (!selectedExperiment || !evaluation) {
     return (
       <div className={`h-64 flex flex-col items-center justify-center text-xs gap-2 ${
         theme === 'light' ? 'text-slate-600 font-medium' : 'text-slate-500'
@@ -74,7 +75,7 @@ export const ModelEvaluationView: React.FC = () => {
       )}
 
       {/* Top 4 KPI Metric Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <div className={`p-3 rounded-xl border font-mono shadow-sm ${
           theme === 'light' ? 'bg-sky-50 border-sky-300' : 'bg-cyan-500/10 border-cyan-500/30'
         }`}>
@@ -82,7 +83,7 @@ export const ModelEvaluationView: React.FC = () => {
           <div className={`text-xl font-bold mt-0.5 ${theme === 'light' ? 'text-sky-800' : 'text-cyan-300'}`}>
             {formatPercent(accuracy)}
           </div>
-          <div className={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-slate-500'}`}>Trên {num_samples} mẫu test/val</div>
+          <div className={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-slate-500'}`}>Trên {num_samples} mẫu {split === 'test' ? 'test' : 'validation'}</div>
         </div>
 
         <div className={`p-3 rounded-xl border font-mono shadow-sm ${
@@ -119,7 +120,7 @@ export const ModelEvaluationView: React.FC = () => {
       {/* Confusion Matrix and Per-class Table Grid */}
       <div className="grid grid-cols-12 gap-4">
         {/* Confusion Matrix (5 cols) */}
-        <div className={`col-span-5 rounded-2xl border p-4 ${
+        <div className={`col-span-12 xl:col-span-5 min-w-0 rounded-2xl border p-4 ${
           theme === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0c1019] border-white/10'
         }`}>
           <div className="flex items-center justify-between mb-3">
@@ -138,7 +139,7 @@ export const ModelEvaluationView: React.FC = () => {
         </div>
 
         {/* Per-class Metrics Table (7 cols) */}
-        <div className={`col-span-7 rounded-2xl border p-4 space-y-2 ${
+        <div className={`col-span-12 xl:col-span-7 min-w-0 rounded-2xl border p-4 space-y-2 ${
           theme === 'light' ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0c1019] border-white/10'
         }`}>
           <div className={`font-semibold mb-2 ${theme === 'light' ? 'text-slate-900' : 'text-slate-200'}`}>

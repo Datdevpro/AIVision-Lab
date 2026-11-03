@@ -25,11 +25,11 @@ const request = <T>(endpoint: string, options: RequestInit = {}, timeoutMs?: num
 export const api = {
   // Curated datasets: download once on the backend, then import from local cache.
   getSampleDatasets: () => request<{ datasets: SampleDataset[] }>('/sample-datasets'),
-  importSampleDataset: (datasetId: string, name: string, classIds: string[], imagesPerClass: number, seed: number) =>
+  importSampleDataset: (datasetId: string, name: string, classIds: string[], imagesPerClass: number, seed: number, targetProjectId?: string) =>
     request<SampleImportJob>(`/sample-datasets/${encodeURIComponent(datasetId)}/import`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ class_ids: classIds, images_per_class: imagesPerClass, seed,
-        project_name: `${name} · ${classIds.length} lớp` }),
+        project_name: `${name} · ${classIds.length} lớp`, target_project_id: targetProjectId }),
     }),
   importFlowers: (classIds: string[], imagesPerClass: number, seed: number) =>
     request<SampleImportJob>('/sample-datasets/flowers/import', {
@@ -54,6 +54,9 @@ export const api = {
       body: JSON.stringify({ name, default_classes }),
     }),
   getProject: (id: string) => request<Project>(`/projects/${id}`),
+  renameProject: (id: string, name: string) => request<Project>(`/projects/${id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+  }),
   deleteProject: (id: string) => request<void>(`/projects/${id}`, { method: 'DELETE' }),
 
   // Classes & Dataset

@@ -161,21 +161,21 @@ def validate_selection(class_ids: list[str], images_per_class: int, settings: Se
 
 
 def import_flowers(settings: Settings, class_ids: list[str], images_per_class: int, seed: int,
-                   project_name: str, progress: Progress) -> str:
-    """Publish a new project in one DB commit; remove staged files on any failure."""
+                   project_name: str, progress: Progress, target_project_id: str | None = None) -> str:
+    """Publish into a new or empty project; remove staged files on any failure."""
     validate_selection(class_ids, images_per_class, settings)
     cache = ensure_flowers(settings, progress)
-    project = Project(name=project_name.strip() or "Flower Photos")
+    from app.services.sample_destination import prepare_target, commit_import
+    project = Project(name=project_name.strip() or "Flower Photos", **({"id": target_project_id} if target_project_id else {}))
     project_id = project.id
-    folder = settings.projects_dir / project_id
+    folder = settings.projects_dir / (new_id() if target_project_id else project_id)
     total = len(class_ids) * images_per_class
-    progress(status="importing", message="Đang thêm ảnh vào dự án mới…", imported_images=0)
+    progress(status="importing", message="Đang thêm ảnh vào dự án…", imported_images=0)
     try:
         (folder / "images").mkdir(parents=True)
         (folder / "thumbs").mkdir()
         with Session(get_engine()) as session:
-            session.add(project)
-            session.flush()
+            project = prepare_target(session, project, target_project_id)
             hashes: set[str] = set()
             imported = 0
             for position, (key, label, _) in enumerate(c for c in FLOWER_CLASSES if c[0] in class_ids):
@@ -195,8 +195,8 @@ def import_flowers(settings: Settings, class_ids: list[str], images_per_class: i
                     image_id = new_id()
                     rel = f"{project.id}/images/{image_id}.jpg"
                     thumb_rel = f"{project.id}/thumbs/{image_id}.jpg"
-                    (settings.projects_dir / rel).write_bytes(processed.jpeg_bytes)
-                    (settings.projects_dir / thumb_rel).write_bytes(processed.thumb_bytes)
+                    (folder / "images" / f"{image_id}.jpg").write_bytes(processed.jpeg_bytes)
+                    (folder / "thumbs" / f"{image_id}.jpg").write_bytes(processed.thumb_bytes)
                     session.add(ImageRecord(
                         id=image_id, project_id=project.id, class_id=cls.id, source="sample",
                         original_name=f"{key}/{path.name}", original_width=processed.original_width,
@@ -219,7 +219,7 @@ def import_flowers(settings: Settings, class_ids: list[str], images_per_class: i
             }
             (folder / "sample-dataset.json").write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
             shutil.copyfile(cache / "LICENSE.txt", folder / "DATASET-LICENSE.txt")
-            session.commit()
+            commit_import(session, settings, folder, project_id)
         return project_id
     except Exception:
         shutil.rmtree(folder, ignore_errors=True)
@@ -240,7 +240,7 @@ class SampleImportManager:
             return copy.deepcopy(self._jobs[job_id])
 
     def start(self, class_ids: list[str], images_per_class: int, seed: int, project_name: str,
-              dataset_id: str = "flowers") -> dict:
+              dataset_id: str = "flowers", target_project_id: str | None = None) -> dict:
         settings = get_settings()
         if dataset_id == "flowers":
             validate_selection(class_ids, images_per_class, settings)
@@ -251,6 +251,10 @@ class SampleImportManager:
             download_bytes = office_fruit.catalog(settings)["download_bytes"]
         else:
             raise not_found("dataset mẫu")
+        if target_project_id:
+            from app.services.sample_destination import empty_target
+            with Session(get_engine()) as session:
+                empty_target(session, target_project_id)
         with self._lock:
             if any(j["status"] not in ("completed", "failed") for j in self._jobs.values()):
                 raise conflict("SAMPLE_IMPORT_BUSY", "Backend đang chuẩn bị một dataset mẫu. Vui lòng đợi hoàn tất.")
@@ -269,7 +273,8 @@ class SampleImportManager:
 
         def run():
             try:
-                project_id = importer(settings, class_ids, images_per_class, seed, project_name, progress)
+                project_id = importer(settings, class_ids, images_per_class, seed, project_name, progress,
+                                      target_project_id=target_project_id)
                 progress(status="completed", project_id=project_id, message="Dataset đã sẵn sàng để huấn luyện.")
             except Exception as exc:
                 logger.exception("%s import failed: %s", name, job_id)

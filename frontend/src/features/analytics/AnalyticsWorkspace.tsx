@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   GitCompare,
+  History,
   Layers,
   Lightbulb,
   Target,
@@ -14,6 +15,7 @@ import { LearningInsightsView } from './LearningInsightsView'
 import { MiniLessonsView } from './MiniLessonsView'
 import { ModelEvaluationView } from './ModelEvaluationView'
 import { NetworkVisualizer } from '../neural-visualizer/NetworkVisualizer'
+import { TrainingHistory } from '../training/TrainingHistory'
 
 export const AnalyticsWorkspace: React.FC = () => {
   const { activeBottomTab, setActiveBottomTab, theme, activeJob } = useLabStore()
@@ -25,6 +27,7 @@ export const AnalyticsWorkspace: React.FC = () => {
   const tabs: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
     { id: 'architecture', label: 'Mạng Nơ-ron & Biểu đồ', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'evaluation', label: 'Đánh giá & Confusion Matrix', icon: <Target className="w-3.5 h-3.5" /> },
+    { id: 'history', label: 'Lịch sử training', icon: <History className="w-3.5 h-3.5" /> },
     { id: 'experiments', label: 'So sánh Thử nghiệm', icon: <GitCompare className="w-3.5 h-3.5" /> },
     { id: 'insights', label: 'Nhận định Sư phạm AI', icon: <Lightbulb className="w-3.5 h-3.5" /> },
     { id: 'lessons', label: 'Khái niệm & Bài học', icon: <BookOpen className="w-3.5 h-3.5" /> },
@@ -87,6 +90,7 @@ export const AnalyticsWorkspace: React.FC = () => {
         <div className="flex-1 min-h-0 overflow-y-auto p-2">
           {activeBottomTab === 'architecture' && <NetworkVisualizer key={activeJob?.id ?? 'draft'} />}
           {activeBottomTab === 'evaluation' && <ModelEvaluationView />}
+          {activeBottomTab === 'history' && <TrainingHistory />}
           {activeBottomTab === 'experiments' && <ExperimentComparisonView />}
           {activeBottomTab === 'insights' && <LearningInsightsView />}
           {activeBottomTab === 'lessons' && <MiniLessonsView />}

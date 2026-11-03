@@ -192,28 +192,28 @@ def attribution_text(classes: list[dict]) -> str:
 
 
 def import_project(settings: Settings, class_ids: list[str], images_per_class: int, seed: int,
-                   project_name: str, progress) -> str:
+                   project_name: str, progress, target_project_id: str | None = None) -> str:
     import random
     import shutil
     from sqlmodel import Session
     from app.core.db import get_engine
     from app.models.db_models import Project, ImageClass, ImageRecord, new_id
     from app.services.image_ingest import process_image
+    from app.services.sample_destination import prepare_target, commit_import
 
     validate_selection(class_ids, images_per_class, settings)
     root = ensure_cache(settings, progress, class_ids)
-    project = Project(name=project_name.strip() or NAME)
+    project = Project(name=project_name.strip() or NAME, **({"id": target_project_id} if target_project_id else {}))
     project_id = project.id
-    folder = settings.projects_dir / project_id
+    folder = settings.projects_dir / (new_id() if target_project_id else project_id)
     selected = []
     imported = 0
-    progress(status="importing", imported_images=0, message="Đang tạo dự án Office & Fruit…")
+    progress(status="importing", imported_images=0, message="Đang nhập Office & Fruit vào dự án…")
     try:
         (folder / "images").mkdir(parents=True)
         (folder / "thumbs").mkdir()
         with Session(get_engine()) as session:
-            session.add(project)
-            session.flush()
+            project = prepare_target(session, project, target_project_id)
             hashes = set()
             for cls in manifest()["classes"]:
                 if cls["id"] not in class_ids:
@@ -234,8 +234,8 @@ def import_project(settings: Settings, class_ids: list[str], images_per_class: i
                     image_id = new_id()
                     rel = f"{project.id}/images/{image_id}.jpg"
                     thumb_rel = f"{project.id}/thumbs/{image_id}.jpg"
-                    (settings.projects_dir / rel).write_bytes(image.jpeg_bytes)
-                    (settings.projects_dir / thumb_rel).write_bytes(image.thumb_bytes)
+                    (folder / "images" / f"{image_id}.jpg").write_bytes(image.jpeg_bytes)
+                    (folder / "thumbs" / f"{image_id}.jpg").write_bytes(image.thumb_bytes)
                     session.add(ImageRecord(
                         id=image_id, project_id=project.id, class_id=db_class.id, source="sample",
                         session_id=f"openimages:{cls['id']}:{item['image_id']}", original_name=f"{cls['id']}/{item['image_id']}.jpg",
@@ -253,7 +253,7 @@ def import_project(settings: Settings, class_ids: list[str], images_per_class: i
             (folder / "sample-dataset.json").write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
             (folder / "DATASET-LICENSE.txt").write_text(attribution_text(selected), encoding="utf-8")
             (folder / "IMAGE-PROVENANCE.json").write_text(json.dumps(selected, ensure_ascii=False), encoding="utf-8")
-            session.commit()
+            commit_import(session, settings, folder, project_id)
         return project_id
     except Exception:
         # folder is generated here from a UUID, never a caller-supplied directory.

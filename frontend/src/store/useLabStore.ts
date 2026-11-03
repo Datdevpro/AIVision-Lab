@@ -17,7 +17,7 @@ import type {
   TrainingJob,
 } from '@/types/api'
 
-export type BottomTab = 'architecture' | 'evaluation' | 'experiments' | 'insights' | 'lessons'
+export type BottomTab = 'architecture' | 'evaluation' | 'history' | 'experiments' | 'insights' | 'lessons'
 export type NetworkSource = 'auto' | 'draft' | 'job' | 'experiment'
 
 interface LabState {
@@ -35,6 +35,7 @@ interface LabState {
   loadProjects: () => Promise<boolean>
   setCurrentProject: (p: Project) => void
   createProject: (name: string) => Promise<void>
+  renameProject: (id: string, name: string) => Promise<void>
   deleteProject: (id: string) => Promise<void>
 
   // Dataset
@@ -185,6 +186,14 @@ export const useLabStore = create<LabState>((set, get) => ({
     } catch (e: any) {
       set({ errorBanner: e.message })
     }
+  },
+
+  renameProject: async (id: string, name: string) => {
+    const renamed = await api.renameProject(id, name.trim())
+    set(state => ({
+      projects: state.projects.map(project => project.id === id ? renamed : project),
+      currentProject: state.currentProject?.id === id ? renamed : state.currentProject,
+    }))
   },
 
   deleteProject: async (id: string) => {

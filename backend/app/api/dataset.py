@@ -50,6 +50,8 @@ def get_project(project_id: str, session: SessionDep):
 
 @router.patch("/projects/{project_id}", response_model=ProjectOut)
 def rename_project(project_id: str, body: ProjectUpdate, session: SessionDep):
+    if not body.name.strip():
+        raise bad_request("INVALID_PROJECT_NAME", "Tên dự án không được để trống.")
     p = ds.get_project(session, project_id)
     p.name = body.name.strip()
     session.add(p)

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   BrainCircuit,
   Cpu,
+  Edit2,
   FolderPlus,
   Layers,
   Moon,
@@ -22,6 +23,7 @@ export const Header: React.FC = () => {
     projects,
     setCurrentProject,
     createProject,
+    renameProject,
     deleteProject,
     config,
     setMode,
@@ -31,6 +33,10 @@ export const Header: React.FC = () => {
 
   const [showNewProject, setShowNewProject] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
+  const [renameTarget, setRenameTarget] = useState<Project | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameError, setRenameError] = useState('')
+  const [renaming, setRenaming] = useState(false)
   const [showProjectDropdown, setShowProjectDropdown] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -150,6 +156,11 @@ export const Header: React.FC = () => {
                     >
                       {p.name}
                     </span>
+                    <button type="button" title="Đổi tên dự án" aria-label={`Đổi tên ${p.name}`}
+                      onClick={() => { setRenameTarget(p); setRenameValue(p.name); setRenameError(''); setShowProjectDropdown(false) }}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
                     {projects.length > 1 && (
                       <button
                         type="button"
@@ -396,6 +407,31 @@ export const Header: React.FC = () => {
           </form>
         </div>,
         document.body
+      )}
+      {renameTarget && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <form role="dialog" aria-modal="true" aria-labelledby="rename-project-title"
+            onSubmit={async event => {
+              event.preventDefault()
+              if (!renameValue.trim() || renaming) return
+              setRenaming(true); setRenameError('')
+              try { await renameProject(renameTarget.id, renameValue); setRenameTarget(null) }
+              catch (e) { setRenameError(e instanceof Error ? e.message : 'Không đổi được tên dự án.') }
+              finally { setRenaming(false) }
+            }} className={`w-full max-w-sm rounded-2xl border p-5 space-y-4 shadow-2xl ${theme === 'light' ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#0c1019] border-white/10 text-slate-100'}`}>
+            <h2 id="rename-project-title" className="font-semibold text-sm">Đổi tên dự án</h2>
+            <label className="block text-xs">Tên dự án
+              <input autoFocus required maxLength={80} value={renameValue} disabled={renaming}
+                onChange={event => setRenameValue(event.target.value)}
+                className="block w-full mt-2 px-3 py-2 rounded-lg border border-slate-500/40 bg-transparent text-sm outline-none focus:border-cyan-500" />
+            </label>
+            {renameError && <p role="alert" className="text-xs text-rose-500">{renameError}</p>}
+            <div className="flex justify-end gap-2 text-xs">
+              <button type="button" disabled={renaming} onClick={() => setRenameTarget(null)} className="px-3 py-2">Hủy</button>
+              <button type="submit" disabled={renaming || !renameValue.trim()} className="px-4 py-2 rounded-lg bg-cyan-600 text-white disabled:opacity-50">{renaming ? 'Đang lưu…' : 'Lưu tên'}</button>
+            </div>
+          </form>
+        </div>, document.body
       )}
     </header>
   )

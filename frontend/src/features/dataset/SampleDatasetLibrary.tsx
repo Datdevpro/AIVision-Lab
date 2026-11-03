@@ -10,7 +10,12 @@ const PENDING_KEY = 'visionlab_flower_import'
 interface Props { open: boolean; onClose: () => void }
 
 export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
-  const { theme, config, isTraining, isSampleImporting, setSampleImporting, activateImportedProject } = useLabStore()
+  const { theme, config, currentProject, dataset: currentDataset, isDatasetLoading, isTraining, isSampleImporting, setSampleImporting, activateImportedProject } = useLabStore()
+  const [destination, setDestination] = useState<'current' | 'new'>('current')
+  const canUseCurrent = !!currentProject && !isDatasetLoading && currentDataset?.project_id === currentProject.id
+    && currentDataset.summary.total_images === 0 && !currentProject.latest_experiment_id
+  const useCurrent = destination === 'current' && canUseCurrent
+  const checkingDestination = !!currentProject && (isDatasetLoading || currentDataset?.project_id !== currentProject.id)
   const dialog = useRef<HTMLDialogElement>(null)
   const [datasets, setDatasets] = useState<SampleDataset[]>([])
   const [datasetId, setDatasetId] = useState('office-fruit')
@@ -109,12 +114,13 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
 
   const startImport = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!dataset || selectionError || busy || isTraining || jobId) return
+    if (!dataset || selectionError || busy || isTraining || jobId || checkingDestination) return
     setStarting(true)
     setError(null)
     setJob(null)
     try {
-      const result = await api.importSampleDataset(dataset.id, dataset.name, selected, imagesPerClass, config.seed)
+      const result = await api.importSampleDataset(dataset.id, dataset.name, selected, imagesPerClass, config.seed,
+        useCurrent ? currentProject!.id : undefined)
       sessionStorage.setItem(PENDING_KEY, result.id)
       setJob(result)
       setJobId(result.id)
@@ -140,6 +146,19 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
         </div>
 
         <div className="p-6 space-y-5">
+          <fieldset disabled={busy || !!jobId} className="space-y-2 text-xs">
+            <legend className="font-semibold mb-2">Nhập dataset vào</legend>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="sample-destination" checked={useCurrent} disabled={!canUseCurrent}
+                onChange={() => setDestination('current')} />
+              Dự án hiện tại: {currentProject?.name ?? 'Chưa chọn dự án'}
+            </label>
+            {!canUseCurrent && <p className="opacity-70">Chỉ nhập trực tiếp vào dự án trống, chưa có lịch sử huấn luyện. Các lớp trống mặc định sẽ được thay bằng lớp của dataset.</p>}
+            <label className="flex items-center gap-2">
+              <input type="radio" name="sample-destination" checked={!useCurrent} onChange={() => setDestination('new')} />
+              Tạo dự án mới từ dataset
+            </label>
+          </fieldset>
           {datasets.length > 1 && <div role="group" aria-label="Chọn bộ dataset" className="grid sm:grid-cols-2 gap-3">
             {[...datasets].sort((a, b) => Number(b.id === 'office-fruit') - Number(a.id === 'office-fruit')).map(item =>
               <button key={item.id} type="button" disabled={busy || !!jobId} aria-pressed={item.id === datasetId}
@@ -194,7 +213,7 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
               <div className={`sm:border-l sm:pl-5 ${light ? 'border-slate-200' : 'border-white/10'}`}>
                 <div className="text-xs font-semibold">Dataset của bạn</div>
                 <div className="text-2xl font-bold mt-1">{Number.isFinite(total) ? total.toLocaleString('vi-VN') : '—'} <span className="text-xs font-normal">ảnh / {selected.length} lớp</span></div>
-                <p className={`text-[11px] mt-1 leading-relaxed ${light ? 'text-slate-500' : 'text-slate-400'}`}>Tạo dự án mới. Train/validation được chia tự động theo cấu hình huấn luyện.</p>
+                <p className={`text-[11px] mt-1 leading-relaxed ${light ? 'text-slate-500' : 'text-slate-400'}`}>{useCurrent ? 'Giữ nguyên tên dự án; thay các lớp trống mặc định bằng lớp đã chọn.' : 'Tạo dự án mới.'} Train/validation được chia tự động theo cấu hình huấn luyện.</p>
               </div>
             </div>
 
@@ -224,9 +243,9 @@ export const SampleDatasetLibrary: React.FC<Props> = ({ open, onClose }) => {
             {dataset && <><a href={dataset.source_url} target="_blank" rel="noreferrer" className="hover:underline">Nguồn: {dataset.id === 'flowers' ? 'TensorFlow' : 'Open Images'}</a>
             {' · '}<a href={dataset.license_url ?? `/datasets/${dataset.id}/LICENSE.txt`} target="_blank" rel="noreferrer" className="hover:underline">Ảnh CC BY · Tác giả</a></>}
           </div>
-          <button type="submit" disabled={!dataset || !!selectionError || busy || isTraining || !!jobId}
+          <button type="submit" disabled={!dataset || !!selectionError || busy || isTraining || !!jobId || checkingDestination}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition disabled:opacity-45 disabled:cursor-not-allowed">
-            {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}{busy ? 'Đang chuẩn bị…' : 'Tạo dự án từ dataset'}{!busy && <ArrowRight size={15} />}
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}{busy ? 'Đang chuẩn bị…' : useCurrent ? 'Nhập vào dự án hiện tại' : 'Tạo dự án từ dataset'}{!busy && <ArrowRight size={15} />}
           </button>
         </div>
       </form>
