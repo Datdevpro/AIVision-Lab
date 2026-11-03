@@ -9,3 +9,9 @@ if not "%run_exit%"=="0" (
     pause
 )
 exit /b %run_exit%
+
+@REM  update latest version
+@REM  git pull origin main
+@REM  npm --prefix frontend ci
+@REM  npm --prefix frontend run build
+@REM  .\run.bat

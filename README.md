@@ -47,7 +47,7 @@ Beginner và Intermediate phù hợp để bắt đầu với ít ảnh. Advance
 
 Bộ phân loại ảnh gồm **12 lớp × 200 ảnh = 2.400 ảnh thực tế**: laptop, chuột máy tính, bàn phím, bàn làm việc, màn hình máy tính, đồng hồ đeo tay, điện thoại di động; chuối, táo, dưa hấu, cam và lê. Các nhóm được chọn từ Open Images, cắt theo bounding box, chuyển RGB, thu nhỏ tối đa 512px và lọc ảnh hỏng, ảnh quá nhỏ, ảnh trùng/gần trùng. Mỗi ảnh nguồn chỉ đóng góp một ảnh cắt cho toàn bộ bộ dữ liệu; các ảnh không phải bản augmentation để tăng số lượng.
 
-Trong **Dataset Studio → Thư viện dataset mẫu → Office & Fruit**, giữ tất cả 12 lớp hoặc chọn nhóm lớp mong muốn, chọn 20–200 ảnh/lớp rồi bấm **Tạo dự án từ dataset**. Ứng dụng tạo dự án riêng, không ghi đè dự án cũ. Với 200 ảnh/lớp và validation 20%, có 1.920 ảnh train và 480 ảnh validation; augmentation chỉ áp dụng lên train khi huấn luyện. Đây là dữ liệu **phân loại một nhãn mỗi ảnh**, không phải mô hình dò nhiều vật thể trong một khung hình.
+Trong **Dataset Studio → Thư viện dataset mẫu → Office & Fruit**, giữ tất cả 12 lớp hoặc chọn nhóm lớp mong muốn, chọn 20–200 ảnh/lớp rồi bấm **Nhập vào dự án hiện tại** nếu dự án còn trống, hoặc chọn tạo dự án mới. Ứng dụng không ghi đè dự án đã có ảnh hoặc lịch sử huấn luyện. Với 200 ảnh/lớp và validation 20%, có 1.920 ảnh train và 480 ảnh validation; augmentation chỉ áp dụng lên train khi huấn luyện. Đây là dữ liệu **phân loại một nhãn mỗi ảnh**, không phải mô hình dò nhiều vật thể trong một khung hình.
 
 Ảnh chỉ tải lần đầu cho các lớp được chọn; lần sau dùng offline. Giáo viên có thể chuẩn bị toàn bộ thư viện trước giờ học:
 
@@ -133,6 +133,8 @@ Nếu gặp `WinError 1114`, `c10.dll` hoặc lỗi DLL tương tự, cập nh�
 
 Cài đặt lần đầu cần Internet. Muốn dùng offline, chạy setup khi còn mạng, dùng thêm `-PrefetchFlowers` nếu cần dataset mẫu. Chỉ cần sao chép `backend/data` khi muốn mang theo dữ liệu/thí nghiệm từ máy cũ; nếu từng đặt `VISIONLAB_DATA_DIR`, sao chép thư mục tương ứng. Dừng app trước khi sao chép SQLite và dữ liệu. Giữ nguyên cấu trúc database, `projects`, `checkpoints`, `torch_cache` và `sample_datasets`; thư mục `.venv` và `node_modules` được tạo lại bằng setup trên máy mới.
 
+**Lịch sử training:** mở tab **Lịch sử training** trong khu vực phân tích phía dưới Lab để xem random seed, cấu hình, các chỉ số trung bình theo lớp và ma trận nhầm lẫn của từng lần huấn luyện. Lịch sử được lưu cục bộ trong `backend/data/visionlab.sqlite3` (hoặc thư mục `VISIONLAB_DATA_DIR`), được Git bỏ qua cùng các file SQLite phụ `-wal`, `-shm` và checkpoint. Một bản clone mới sẽ có lịch sử trống; chỉ sao chép database khi chủ động muốn chuyển lịch sử sang máy khác.
+
 **Cài thủ công hoặc chạy chế độ phát triển:**
 
 | Thành phần | Môi trường đề xuất |
@@ -192,7 +194,9 @@ Lần đầu sử dụng MobileNetV3-Small cần tải trọng số pretrained. 
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/system/prefetch-weights
 ```
 
-Để thực hành với dữ liệu có sẵn, bấm **Chọn dataset mẫu** trong Dataset Studio, chọn 2–5 loại hoa và số ảnh mỗi lớp (20–500, tổng không quá giới hạn dự án), rồi bấm **Tạo dự án từ dataset**. Flower Photos luôn được import vào một dự án mới; các dự án hiện có được giữ nguyên. Ảnh mẫu vẫn có thể xóa, đổi lớp và bổ sung bằng upload/webcam. Ứng dụng lấy mẫu cân bằng theo seed, chia train/validation bằng chiến lược random và cấu hình huấn luyện hiện tại.
+Để thực hành với dữ liệu có sẵn, bấm **Chọn dataset mẫu** trong Dataset Studio, chọn 2–5 loại hoa và số ảnh mỗi lớp (20–500, tổng không quá giới hạn dự án). Nếu dự án đang chọn còn trống và chưa có lịch sử huấn luyện, bấm **Nhập vào dự án hiện tại**: tên và ID dự án được giữ nguyên, các lớp trống mặc định được thay bằng lớp của dataset. Có thể chọn **Tạo dự án mới từ dataset** nếu muốn tách riêng. Cả Flower Photos và Office & Fruit đều hỗ trợ hai cách này; không ghi đè dự án đã có ảnh hoặc kết quả huấn luyện. Ảnh mẫu vẫn có thể xóa, đổi lớp và bổ sung bằng upload/webcam. Ứng dụng lấy mẫu cân bằng theo seed, chia train/validation bằng chiến lược random và cấu hình huấn luyện hiện tại.
+
+Để đổi tên dự án, mở danh sách dự án trên thanh công cụ, bấm biểu tượng bút chì cạnh dự án, nhập tên mới và bấm **Lưu tên**. Thao tác chỉ đổi tên, giữ nguyên ảnh, lớp, mô hình và lịch sử huấn luyện.
 
 Lần đầu cần Internet để tải bộ Flower Photos gốc khoảng 218 MiB; backend kiểm tra SHA-256 và lưu cache tại `backend/data/sample_datasets/flowers` (hoặc bên trong `VISIONLAB_DATA_DIR`). Những lần sau dùng cache offline. Để chuẩn bị máy khác, sao chép toàn bộ thư mục cache này vào cùng vị trí trước buổi học; hoặc chép archive chính thức `flower_photos.tgz` vào thư mục đó để ứng dụng kiểm tra và giải nén khi import. MobileNet vẫn cần trọng số pretrained đã tải sẵn để huấn luyện offline. Tiến độ import chạy nền; có thể đóng hộp thoại và mở lại, nhưng không khởi động lại backend khi đang import.
 
