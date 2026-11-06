@@ -4,19 +4,20 @@ const ratio = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
 
 export function scoreModel(experiment: Experiment) {
+  const snapshot = experiment.model_score?.rubric_version === 'validation-35-20-20-25-recall-v1' ? experiment.model_score : null
   const report = experiment.evaluation?.validation
   const classes = experiment.class_names.length
-  const loss = experiment.best_checkpoint?.val_loss ?? experiment.best_val_loss
-  const baselineLoss = classes > 1 ? Math.log(classes) : null
+  const loss = snapshot ? snapshot.loss : experiment.best_checkpoint?.val_loss ?? experiment.best_val_loss
+  const baselineLoss = snapshot ? snapshot.baseline_loss : classes > 1 ? Math.log(classes) : null
   const validReport = !!report && report.num_samples > 0
   const completeClasses = validReport && report.per_class?.length === classes && classes > 1 &&
     report.per_class.every(item => item.support > 0)
   const validRecall = completeClasses && report.per_class.every(item => ratio(item.recall))
-  const weakest = validRecall ? report.per_class.reduce((a, b) => a.recall <= b.recall ? a : b) : null
-  const accuracy = validReport && ratio(report.accuracy) ? report.accuracy : null
-  const macro = completeClasses && ratio(report.f1_macro) ? report.f1_macro : null
+  const weakest = snapshot ? snapshot.weakest_class : validRecall ? report.per_class.reduce((a, b) => a.recall <= b.recall ? a : b) : null
+  const accuracy = snapshot ? snapshot.qualities.accuracy : validReport && ratio(report.accuracy) ? report.accuracy : null
+  const macro = snapshot ? snapshot.qualities.macro : completeClasses && ratio(report.f1_macro) ? report.f1_macro : null
   const validLoss = validReport && baselineLoss !== null && typeof loss === 'number' && Number.isFinite(loss) && loss >= 0
-  const lossQuality = validLoss ? Math.max(0, Math.min(1, 1 - loss / baselineLoss)) : null
+  const lossQuality = snapshot ? snapshot.qualities.loss : validLoss ? Math.max(0, Math.min(1, 1 - loss / baselineLoss)) : null
   const rows = [
     { key: 'accuracy', label: 'Overall Accuracy', weight: 35, quality: accuracy,
       description: 'Tỷ lệ dự đoán đúng trên toàn bộ ảnh validation.' },
@@ -27,6 +28,6 @@ export function scoreModel(experiment: Experiment) {
     { key: 'loss', label: 'Overall Loss', weight: 25, quality: lossQuality,
       description: 'Cross-entropy loss trung bình trên validation của checkpoint tốt nhất; càng thấp càng tốt.' },
   ].map(row => ({ ...row, points: row.quality === null ? null : row.weight * row.quality }))
-  const total = rows.every(row => row.points !== null) ? rows.reduce((sum, row) => sum + row.points!, 0) : null
-  return { rows, total, loss: validLoss ? loss : null, baselineLoss, weakest, report }
+  const total = snapshot ? snapshot.total : rows.every(row => row.points !== null) ? rows.reduce((sum, row) => sum + row.points!, 0) : null
+  return { rows, total, loss: snapshot ? snapshot.loss : validLoss ? loss : null, baselineLoss, weakest, report }
 }

@@ -160,9 +160,15 @@ def test_full_workflow_train_stream_predict_export_compare(client, project):
     ev = exp["evaluation"]["validation"]
     assert ev["num_samples"] == 6 and len(ev["confusion_matrix"]) == 2 and ev["warnings"]  # small-set warning present
     assert exp["evaluation"]["test"] is None
+    score = exp["model_score"]
+    assert score == exp["evaluation"]["model_score"]
+    assert score["rubric_version"] == "validation-35-20-20-25-recall-v1"
+    assert 0 <= score["total"] <= 100
     assert client.get(f"/api/experiments/{exp_id}/metrics").json()["best_epoch"] == exp["best_checkpoint"]["epoch"]
     assert client.get(f"/api/experiments/{exp_id}/insights").json()["insights"]
-    assert client.get(f"/api/experiments?project_id={project['id']}").json()[0]["id"] == exp_id
+    history = client.get(f"/api/experiments?project_id={project['id']}").json()
+    assert history[0]["id"] == exp_id
+    assert history[0]["model_score"] == score
 
     # inference with the trained model (labels map consistently to output indices)
     pred = client.post("/api/inference/predict", data={"experiment_id": exp_id},

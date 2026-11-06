@@ -45,7 +45,9 @@ Beginner và Intermediate phù hợp để bắt đầu với ít ảnh. Advance
 
 ## Dataset mẫu Office & Fruit
 
-Bộ phân loại ảnh gồm **12 lớp × 200 ảnh = 2.400 ảnh thực tế**: laptop, chuột máy tính, bàn phím, bàn làm việc, màn hình máy tính, đồng hồ đeo tay, điện thoại di động; chuối, táo, dưa hấu, cam và lê. Các nhóm được chọn từ Open Images, cắt theo bounding box, chuyển RGB, thu nhỏ tối đa 512px và lọc ảnh hỏng, ảnh quá nhỏ, ảnh trùng/gần trùng. Mỗi ảnh nguồn chỉ đóng góp một ảnh cắt cho toàn bộ bộ dữ liệu; các ảnh không phải bản augmentation để tăng số lượng.
+Bộ phân loại ảnh gồm **12 lớp × 200 ảnh = 2.400 ảnh thực tế**: laptop, chuột máy tính, bàn phím, bàn làm việc, màn hình máy tính, đồng hồ đeo tay, điện thoại di động; chuối, táo, dưa hấu, cam và lê. Mười một lớp lấy từ Open Images; lớp điện thoại dùng ảnh Wikimedia Commons của các dòng smartphone ra mắt từ **2020 trở đi**, được rà soát để loại máy bàn phím đời cũ, tablet, ảnh chụp màn hình, hình dựng và linh kiện rời. Ảnh được cắt theo vật thể khi cần, chuyển RGB, thu nhỏ tối đa 512px và lọc ảnh hỏng, ảnh quá nhỏ, ảnh trùng/gần trùng. Mỗi ảnh nguồn chỉ đóng góp một ảnh cắt cho toàn bộ bộ dữ liệu; các ảnh không phải bản augmentation để tăng số lượng.
+
+Lớp mới có tên **Smartphone (2020+)**, ID nội bộ vẫn là `phone`. Khi cập nhật source, manifest mới làm cache cũ được kiểm tra lại và tải ảnh điện thoại mới khi cần. Khởi động lại backend và tải lại trang để thấy tên mới trong thư viện. Dự án đã nhập trước đó giữ nguyên ảnh, tên lớp cũ và lịch sử: chọn **Tạo dự án mới từ dataset** để dùng bộ smartphone mới, tránh thay đổi dữ liệu gắn với mô hình đã huấn luyện. Không dùng lại gói offline cũ với manifest mới; chuẩn bị lại cache/gói offline theo source mới.
 
 Trong **Dataset Studio → Thư viện dataset mẫu → Office & Fruit**, giữ tất cả 12 lớp hoặc chọn nhóm lớp mong muốn, chọn 20–200 ảnh/lớp rồi bấm **Nhập vào dự án hiện tại** nếu dự án còn trống, hoặc chọn tạo dự án mới. Ứng dụng không ghi đè dự án đã có ảnh hoặc lịch sử huấn luyện. Với 200 ảnh/lớp và validation 20%, có 1.920 ảnh train và 480 ảnh validation; augmentation chỉ áp dụng lên train khi huấn luyện. Đây là dữ liệu **phân loại một nhãn mỗi ảnh**, không phải mô hình dò nhiều vật thể trong một khung hình.
 
@@ -59,7 +61,7 @@ Trong **Dataset Studio → Thư viện dataset mẫu → Office & Fruit**, giữ
 
 Ở lệnh thứ hai, thay `cpu` bằng build đang cài (`cu118`, `cu124`, `cu128`…) nếu dùng CUDA. Cache nằm tại `backend/data/sample_datasets/office-fruit` (hoặc trong `VISIONLAB_DATA_DIR` tương ứng). Có thể sao chép nguyên thư mục cache sang máy học sinh để không cần mạng. Gói `office-fruit-v1.zip` được tạo khi biên soạn bộ dữ liệu, gồm ảnh theo lớp, manifest, checksum và thông tin tác giả; giải nén vào cùng thư mục cache, giữ cả các file `.json` và `.ready.json`. Không cần sao chép database để dùng thư viện trên máy khác.
 
-Manifest nhỏ được lưu trong `backend/app/data/office-fruit-v1.json`; ảnh và cache lớn không đưa vào source. Nguồn từng ảnh, bounding box, SHA-256, tác giả và giấy phép được giữ trong manifest và dự án; xuất lớp ảnh cũng kèm provenance. Ảnh được nguồn liệt kê là **CC BY 2.0**, annotation **CC BY 4.0**; xem [Open Images](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) và file `DATASET-LICENSE.txt` khi xuất dữ liệu.
+Manifest được lưu trong `backend/app/data/office-fruit-v1.json`; ảnh và cache lớn không đưa vào source. Nguồn từng ảnh, bounding box, SHA-256, tác giả và giấy phép được giữ trong manifest và dự án; xuất lớp ảnh cũng kèm provenance. Ảnh Open Images dùng **CC BY 2.0**, annotation Open Images **CC BY 4.0**. Ảnh smartphone Wikimedia Commons giữ giấy phép từng ảnh (**CC BY, CC BY-SA hoặc CC0**); ảnh CC BY-SA đã chỉnh sửa giữ cùng giấy phép của ảnh gốc. Xem [Open Images](https://storage.googleapis.com/openimages/web/factsfigures_v7.html), [Wikimedia Commons](https://commons.wikimedia.org/) và file `DATASET-LICENSE.txt` khi xuất dữ liệu.
 
 Dành cho người bảo trì muốn biên soạn lại: chạy `backend/scripts/build_office_fruit.py` để lấy hai bảng annotation/metadata chính thức (~2,9 GB, lưu trong `.cache/dataset-build`), sau đó chạy lại với `--curate`. Học sinh không cần chạy bước này.
 
@@ -221,6 +223,8 @@ Augmentation được tạo khi lấy ảnh train: lật ngang ngẫu nhiên, xo
 
 Tab **Đánh giá mô hình**, cạnh **Đánh giá & Confusion Matrix**, tự mở khi huấn luyện thành công và tải xong báo cáo. Bảng dùng cùng checkpoint tốt nhất và cùng tập validation cho bốn tiêu chí:
 
+**Lịch sử training** hiển thị điểm trên 100 cho từng lần chạy; chọn một lần để xem tổng điểm và mở **Chi tiết điểm đánh giá**. Điểm và phiên bản công thức được lưu cùng báo cáo khi hoàn tất huấn luyện. Các lần chạy cũ chưa lưu điểm được tính từ báo cáo validation và loss checkpoint đã có; thiếu dữ liệu sẽ hiện **Chưa đủ dữ liệu**, không cần huấn luyện lại để xem điểm của lịch sử hợp lệ.
+
 | Tiêu chí | Trọng số | Điểm đóng góp |
 | --- | --- | --- |
 | Overall Accuracy | 35% | `35 × accuracy` |
@@ -231,6 +235,8 @@ Tab **Đánh giá mô hình**, cạnh **Đánh giá & Confusion Matrix**, tự m
 Các tỷ lệ dùng thang 0–1; `K` là số lớp. Loss là cross-entropy trung bình trên validation ở checkpoint tốt nhất, không phải train loss, loss thấp nhất của mọi epoch hay loss epoch cuối. `ln(K)` là loss của dự đoán gán xác suất đều cho mọi lớp: loss bằng 0 được 25 điểm, loss từ `ln(K)` trở lên được 0 điểm. Đây là quy ước chấm thực hành, không phải chuẩn chất lượng hay chỉ số hội tụ. Nếu thiếu số liệu hoặc có lớp không có ảnh validation, không hiển thị tổng điểm; không tự phân bổ lại trọng số. Validation đã dùng để chọn checkpoint, nên điểm không thay thế đánh giá trên bộ test độc lập.
 
 ## Chạy trên một cổng
+
+Khi cập nhật các bản clone cũ, nên sao lưu `backend/data` trước khi pull nếu còn dữ liệu cần giữ: các file dự án cục bộ từng được đưa vào Git nay được gỡ khỏi phần theo dõi. Repo chỉ chứa mã nguồn, manifest và ảnh xem trước; ảnh thực hành và lịch sử SQLite lưu riêng trên từng máy.
 
 FastAPI có thể phục vụ cả API và frontend đã build, phù hợp để chạy bản cục bộ không cần Vite dev server.
 

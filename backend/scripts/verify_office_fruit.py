@@ -36,6 +36,10 @@ def main():
     sizes = []
     for cls in data["classes"]:
         assert len(cls["images"]) == per_class
+        if cls["id"] == "phone" and data.get("phone_policy"):
+            assert data["phone_policy"]["min_release_year"] >= 2020
+            assert all(item.get("provider") == "wikimedia-commons" and item.get("model_release_year", 0) >= 2020
+                       and item.get("model") for item in cls["images"])
         assert len(list((root / cls["id"]).glob("*.jpg"))) == per_class
         for item in cls["images"]:
             assert item["image_id"] not in seen_photos

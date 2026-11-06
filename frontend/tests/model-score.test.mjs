@@ -91,3 +91,18 @@ test('missing or empty validation and invalid metrics remain unscored', () => {
   experiment.evaluation.validation = null
   assert.equal(scoreModel(experiment).total, null)
 })
+
+test('historical scorecards use the saved rubric even if raw metrics change', () => {
+  const experiment = fixture()
+  experiment.model_score = {
+    rubric_version: 'validation-35-20-20-25-recall-v1', total: 73.05,
+    qualities: { accuracy: .85, macro: .84, weakest: .7, loss: .5 },
+    loss: Math.log(3) / 2, baseline_loss: Math.log(3),
+    weakest_class: { label: 'Táo', recall: .7, support: 100 },
+  }
+  experiment.evaluation.validation.accuracy = .1
+  experiment.best_val_loss = 100
+  const score = scoreModel(experiment)
+  assert.equal(score.total, 73.05)
+  assert.deepEqual(score.rows.map(row => row.points), [29.75, 16.8, 14, 12.5])
+})

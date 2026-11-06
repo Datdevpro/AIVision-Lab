@@ -29,7 +29,7 @@ PREVIEW_PREFIXES = {
     "desk": "57f1ca280020", "monitor": "a3939a09aea1", "watch": "a7fabb3bd493",
     "banana": "0c59a8e4469e", "apple": "533563a9ff6c", "watermelon": "5ee1459e77fb",
     "orange": "3c22df7047a1", "pear": "51a4941f3028",
-    "phone": "2b04a8212",
+    "phone": "d3e4d1bb0057f",
 }
 
 
@@ -65,8 +65,11 @@ def download(name):
 def candidates(extend: list[str] | None = None):
     # An extension preserves previously curated photographs and their ordering.
     # New labels are sampled independently from the official annotations.
-    existing = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")) if extend else None
-    preserved = {cls["id"]: cls for cls in existing["classes"]} if existing else {}
+    existing = json.loads(MANIFEST_PATH.read_text(encoding="utf-8")) if MANIFEST_PATH.exists() else None
+    # The 2020+ smartphone class has a separate, visually reviewed Commons source.
+    # Rebuilding the older Open Images tables must not silently restore legacy phones.
+    preserved = {cls["id"]: cls for cls in existing["classes"]
+                 if extend or (cls["id"] == "phone" and existing.get("phone_policy"))} if existing else {}
     requested = set(extend or [key for key, _, _ in CLASSES])
     if not requested <= {key for key, _, _ in CLASSES}:
         raise ValueError("Unknown Office & Fruit class")
@@ -131,6 +134,9 @@ def candidates(extend: list[str] | None = None):
                 "classes": [preserved[key] if key in preserved else
                             {"id": key, "name": label, "open_images_label": mid, "images": selected[key]}
                             for key, label, mid in CLASSES]}
+    if existing and existing.get("phone_policy"):
+        manifest["phone_policy"] = existing["phone_policy"]
+        manifest["additional_sources"] = existing.get("additional_sources", [])
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
     MANIFEST_PATH.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     snapshot = "candidates-" + "-".join(sorted(requested)) + ".json" if extend else "candidates.json"
@@ -159,7 +165,8 @@ def curate():
                 return item, info, None
             except Exception as exc:
                 return item, None, str(exc)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        workers = 2 if any(item.get("provider") == "wikimedia-commons" for item in cls["images"]) else 8
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             # Small batches avoid downloading hundreds of unnecessary candidates.
             for offset in range(0, len(cls["images"]), 24):
                 for item, info, error in pool.map(prepare, cls["images"][offset:offset + 24]):

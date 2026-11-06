@@ -1,4 +1,4 @@
-"""Curated Open Images crops: office objects plus five common fruits."""
+"""Curated office objects and fruits from Open Images and Wikimedia Commons."""
 from __future__ import annotations
 
 import concurrent.futures
@@ -8,7 +8,10 @@ import json
 import math
 from pathlib import Path
 import re
+import time
+import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 
 from PIL import Image, ImageOps, ImageStat
 
@@ -28,7 +31,7 @@ CLASSES = (
     ("watermelon", "Dưa hấu", "/m/0kpqd"),
     ("orange", "Cam", "/m/0cyhj_"),
     ("pear", "Lê", "/m/061_f"),
-    ("phone", "Điện thoại di động", "/m/050k8"),
+    ("phone", "Smartphone (2020+)", "/m/050k8"),
 )
 MANIFEST_PATH = Path(__file__).resolve().parents[1] / "data" / "office-fruit-v1.json"
 SOURCE_URL = "https://storage.googleapis.com/openimages/web/download_v7.html"
@@ -63,7 +66,7 @@ def catalog(settings: Settings) -> dict:
     data = manifest()
     return {
         "id": "office-fruit", "name": NAME,
-        "description": "7 loại đồ công nghệ/văn phòng và 5 loại trái cây. Ảnh thực tế đã cắt theo vật thể, chuẩn hóa và loại trùng, sẵn sàng huấn luyện.",
+        "description": "7 loại đồ công nghệ/văn phòng và 5 loại trái cây. Lớp điện thoại dùng smartphone ra mắt từ 2020. Ảnh thực tế đã chuẩn hóa và loại trùng, sẵn sàng huấn luyện.",
         "source_url": SOURCE_URL, "license_url": "/datasets/office-fruit/LICENSE.txt",
         "download_bytes": sum(item.get("source_bytes", 150_000) for c in data["classes"] for item in c["images"]),
         "cached": cached(settings), "min_classes": 2, "max_classes": min(len(CLASSES), settings.max_classes),
@@ -127,25 +130,38 @@ def _paths(root: Path, key: str, item: dict) -> tuple[Path, Path]:
 
 def prepare_one(root: Path, key: str, item: dict) -> tuple[Path, dict]:
     path, info_path = _paths(root, key, item)
+    url = source_url(item)
     rotation = int(float(item.get("Rotation") or 0))
     try:
         info = json.loads(info_path.read_text(encoding="utf-8"))
-        if info["recipe"] == item["bbox"] and info.get("rotation", 0) == rotation and info["crop_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest() and (
+        if (info.get("source_url", url if item.get("provider", "open-images") == "open-images" else None) == url
+                and info["recipe"] == item["bbox"] and info.get("rotation", 0) == rotation and info["crop_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()) and (
             not item.get("source_sha256") or info["source_sha256"] == item["source_sha256"]
         ):
             return path, info
     except (OSError, ValueError, KeyError):
         pass
-    url = f"https://open-images-dataset.s3.amazonaws.com/train/{item['image_id']}.jpg"
-    with urllib.request.urlopen(url, timeout=45) as response:
-        raw = response.read(MAX_SOURCE_BYTES + 1)
+    request = urllib.request.Request(url, headers={"User-Agent": "VisionLabDatasetCurator/1.0 (https://github.com/Datdevpro/AIVision-Lab; educational image dataset)"})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                raw = response.read(MAX_SOURCE_BYTES + 1)
+            break
+        except urllib.error.HTTPError as exc:
+            if item.get("provider") != "wikimedia-commons" or exc.code != 429 or attempt == 2:
+                raise
+            retry = exc.headers.get("Retry-After", "30")
+            delay = float(retry) if retry.isdecimal() else 30
+            if delay > 60:
+                raise
+            time.sleep(max(1, delay))
     if len(raw) > MAX_SOURCE_BYTES:
         raise ValueError("Source download is too large")
     source_sha = hashlib.sha256(raw).hexdigest()
     if item.get("source_sha256") and source_sha != item["source_sha256"]:
         raise ValueError("Source image checksum mismatch")
     crop, dhash = crop_image(raw, item["bbox"], rotation)
-    info = {"recipe": item["bbox"], "rotation": rotation, "source_sha256": source_sha, "source_bytes": len(raw),
+    info = {"recipe": item["bbox"], "rotation": rotation, "source_url": url, "source_sha256": source_sha, "source_bytes": len(raw),
             "crop_sha256": hashlib.sha256(crop).hexdigest(), "dhash": dhash}
     path.parent.mkdir(parents=True, exist_ok=True)
     part = path.with_suffix(".part")
@@ -153,6 +169,19 @@ def prepare_one(root: Path, key: str, item: dict) -> tuple[Path, dict]:
     part.replace(path)
     info_path.write_text(json.dumps(info), encoding="utf-8")
     return path, info
+
+
+def source_url(item: dict) -> str:
+    if item.get("provider", "open-images") == "open-images":
+        return f"https://open-images-dataset.s3.amazonaws.com/train/{item['image_id']}.jpg"
+    if item.get("provider") != "wikimedia-commons":
+        raise ValueError("Unsupported curated image provider")
+    url = item.get("source_url", "")
+    parsed = urlsplit(url)
+    if (parsed.scheme != "https" or parsed.netloc != "upload.wikimedia.org"
+            or not parsed.path.startswith("/wikipedia/commons/") or parsed.query or parsed.fragment):
+        raise ValueError("Invalid Wikimedia Commons source URL")
+    return url
 
 
 def ensure_cache(settings: Settings, progress, class_ids: list[str] | None = None) -> Path:
@@ -168,7 +197,8 @@ def ensure_cache(settings: Settings, progress, class_ids: list[str] | None = Non
             return prepare_one(root, key, item)
         except Exception as exc:
             raise AppError(503, "SAMPLE_IMAGE_UNAVAILABLE", f"Chưa tải được ảnh {key}/{item['image_id']}. Kiểm tra Internet rồi thử lại; ảnh đã tải được giữ lại.") from exc
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+    workers = 2 if any(item.get("provider") == "wikimedia-commons" for c in selected for item in c["images"]) else 6
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         for _ in pool.map(prepare, [(c["id"], item) for c in selected for item in c["images"]]):
             finished += 1
             progress(message=f"Chuẩn bị Office & Fruit: {finished}/{total} ảnh")
@@ -180,9 +210,11 @@ def ensure_cache(settings: Settings, progress, class_ids: list[str] | None = Non
 
 
 def attribution_text(classes: list[dict]) -> str:
-    lines = ["Office & Fruit — Vision Lab curated subset of Open Images", SOURCE_URL,
-             "Images: CC BY 2.0 https://creativecommons.org/licenses/by/2.0/",
-             "Annotations: Google LLC, CC BY 4.0 https://creativecommons.org/licenses/by/4.0/",
+    lines = ["Office & Fruit — Vision Lab curated photographs from Open Images and Wikimedia Commons", SOURCE_URL,
+             "Wikimedia Commons: https://commons.wikimedia.org/",
+             "Images: each photograph retains the author and license URL listed below (CC BY, CC BY-SA or CC0).",
+             "Open Images annotations: Google LLC, CC BY 4.0 https://creativecommons.org/licenses/by/4.0/",
+             "Wikimedia crops: manually reviewed; modifications to CC BY-SA photos retain the same CC BY-SA license as the original.",
              "Changes: object bounding-box crop with 4% context; source orientation correction; RGB conversion; resize <=512px; JPEG re-encoding.",
              "One crop per original photo; class labels translated to Vietnamese. No synthetic augmentation in this dataset.", ""]
     for cls in classes:
@@ -215,7 +247,8 @@ def import_project(settings: Settings, class_ids: list[str], images_per_class: i
         with Session(get_engine()) as session:
             project = prepare_target(session, project, target_project_id)
             hashes = set()
-            for cls in manifest()["classes"]:
+            data = manifest()
+            for cls in data["classes"]:
                 if cls["id"] not in class_ids:
                     continue
                 candidates = list(cls["images"])
@@ -246,9 +279,12 @@ def import_project(settings: Settings, class_ids: list[str], images_per_class: i
                     imported += 1
                     progress(imported_images=imported, message=f"Đang thêm ảnh: {imported}/{len(class_ids) * images_per_class}")
             metadata = {"id": "office-fruit", "name": NAME, "version": 1, "source_url": SOURCE_URL,
+                        "revision": data.get("revision", "v1"),
+                        "additional_sources": data.get("additional_sources", []),
+                        "phone_policy": data.get("phone_policy") if "phone" in class_ids else None,
                         "class_ids": [c["id"] for c in selected], "images_per_class": images_per_class,
                         "imported_images": imported, "seed": seed, "manifest_sha256": manifest_hash(),
-                        "license": "Images CC BY 2.0; annotations CC BY 4.0",
+                        "license": "Image licenses and attribution per photograph in DATASET-LICENSE.txt; Open Images annotations CC BY 4.0",
                         "preprocessing": "Object crops, RGB, max 512px, one crop per original photo, balanced classes"}
             (folder / "sample-dataset.json").write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
             (folder / "DATASET-LICENSE.txt").write_text(attribution_text(selected), encoding="utf-8")

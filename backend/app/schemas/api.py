@@ -120,6 +120,7 @@ class JobOut(BaseModel):
 
 
 class ExperimentSummary(BaseModel):
+    model_score: dict | None = None
     id: str
     project_id: str
     name: str

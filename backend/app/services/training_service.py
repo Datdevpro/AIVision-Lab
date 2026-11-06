@@ -26,6 +26,7 @@ from app.models.db_models import Experiment, TrainingJob, new_id, utcnow
 from app.schemas.training_config import TrainingConfig, estimate_params, resolve_config
 from app.services import dataset_logic as logic
 from app.services import dataset_service
+from app.services.model_score import build_model_score
 from app.workers.training_worker import worker_main
 
 TERMINAL = {"completed", "cancelled", "failed"}
@@ -282,7 +283,8 @@ class TrainingManager:
                 checkpoint_path=f"{state.id}/{result['checkpoint_file']}",
             )
             exp.evaluation = {**result["evaluation"], "stopped_early": result["stopped_early"],
-                              "split_sizes": result["split_sizes"], "feature_cache": result["feature_cache"]}
+                              "split_sizes": result["split_sizes"], "feature_cache": result["feature_cache"],
+                              "model_score": build_model_score(state.class_names, result["evaluation"].get("validation"), best.get("val_loss"))}
             s.add(exp)
             s.commit()
             state.experiment_id = exp.id

@@ -2,11 +2,13 @@ import React from 'react'
 import { useLabStore } from '@/store/useLabStore'
 import { formatNumber, formatPercent } from '@/lib/utils'
 import { scoreModel } from './model-score'
+import type { Experiment } from '@/types/api'
 
-export const ModelScoreView: React.FC = () => {
-  const { activeExperiment: experiment, activeJob, theme } = useLabStore()
+export const ModelScoreView: React.FC<{ experiment?: Experiment; compact?: boolean }> = ({ experiment: providedExperiment, compact = false }) => {
+  const { activeExperiment, activeJob, theme } = useLabStore()
+  const experiment = providedExperiment ?? activeExperiment
   const light = theme === 'light'
-  const training = activeJob && !['completed', 'failed', 'cancelled'].includes(activeJob.status)
+  const training = !providedExperiment && activeJob && !['completed', 'failed', 'cancelled'].includes(activeJob.status)
   if (training) return <p role="status" className="p-8 text-center text-sm opacity-70">Đang huấn luyện. Bảng đánh giá sẽ xuất hiện khi có kết quả hoàn tất.</p>
   if (!experiment?.evaluation?.validation) return <p role="status" className="p-8 text-center text-sm opacity-70">Chưa có kết quả đánh giá. Hãy hoàn thành một lần huấn luyện để xem điểm mô hình.</p>
 
@@ -25,7 +27,7 @@ export const ModelScoreView: React.FC = () => {
         <p className="mt-1 text-xs">{total === null ? 'Chưa đủ dữ liệu để tính tổng điểm' : 'Tổng điểm theo trọng số'}</p>
       </div>
     </div>
-    <div className={`rounded-2xl border overflow-x-auto ${card}`}>
+    {!compact && <><div className={`rounded-2xl border overflow-x-auto ${card}`}>
       <table className="w-full text-left min-w-[650px]">
         <caption className="sr-only">Bốn tiêu chí đánh giá với trọng số 35%, 20%, 20%, 25%</caption>
         <thead className={light ? 'bg-slate-50' : 'bg-white/5'}><tr>
@@ -51,6 +53,6 @@ export const ModelScoreView: React.FC = () => {
       <p>Với {experiment.class_names.length} lớp, mốc xác suất đều là ln(K) = {baselineLoss === null ? '—' : formatNumber(baselineLoss, 4)}. Loss bằng 0 được 25 điểm; loss từ mốc này trở lên được 0 điểm. Đây là mốc gán xác suất đều cho mọi lớp, không phải baseline theo tần suất lớp.</p>
       <p className="opacity-70">Thang điểm thực hành theo quy ước, không phải xác suất mô hình đúng hay chuẩn chứng nhận chất lượng. Loss không đo tính hội tụ. Nếu thiếu ảnh đánh giá ở bất kỳ lớp nào, tổng điểm chưa được tính. Kết quả phụ thuộc dữ liệu và cách chia tập; validation đã được dùng để chọn checkpoint.</p>
       {report?.warnings?.map((warning, index) => <p key={index} className={light ? 'text-amber-800' : 'text-amber-300'}>{warning}</p>)}
-    </div>
+    </div></>}
   </section>
 }

@@ -5,6 +5,7 @@ import io
 import json
 import time
 import zipfile
+from pathlib import Path
 
 import pytest
 import numpy as np
@@ -14,6 +15,20 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.services import office_fruit as office
 from tests.conftest import make_image_bytes
+
+
+def test_shipped_smartphones_have_reviewed_sources_and_2020_cutoff():
+    data = json.loads((Path(__file__).resolve().parents[1] / "app/data/office-fruit-v1.json").read_text(encoding="utf-8"))
+    phone = next(cls for cls in data["classes"] if cls["id"] == "phone")
+    assert data["phone_policy"]["min_release_year"] == 2020
+    assert len(phone["images"]) == 200
+    assert len({item["source_sha256"] for item in phone["images"]}) == 200
+    for item in phone["images"]:
+        assert item["provider"] == "wikimedia-commons"
+        assert item["model_release_year"] >= 2020 and item["model"]
+        assert item["model"] not in {"Samsung Galaxy A51", "Samsung Galaxy A71"}
+        assert item["Author"] and item["License"] and item["OriginalLandingURL"]
+        assert office.source_url(item).startswith("https://upload.wikimedia.org/wikipedia/commons/")
 
 
 @pytest.fixture
@@ -35,6 +50,11 @@ def office_cache(client, tmp_path, monkeypatch):
                     "source_sha256": hashlib.sha256(raw).hexdigest(), "source_bytes": len(raw),
                     "Author": "Fixture author", "Title": key, "License": "https://creativecommons.org/licenses/by/2.0/",
                     "OriginalLandingURL": f"https://example.com/{image_id}"}
+            if key == "phone":
+                item.update({"provider": "wikimedia-commons",
+                             "source_url": f"https://upload.wikimedia.org/wikipedia/commons/a/ab/{image_id}.jpg",
+                             "License": "https://creativecommons.org/licenses/by-sa/4.0/",
+                             "model": "Fixture smartphone", "model_release_year": 2021})
             monkeypatch.setattr(office.urllib.request, "urlopen", lambda *args, _raw=raw, **kwargs: io.BytesIO(_raw))
             office.prepare_one(root, key, item)
             rows.append(item)
@@ -64,7 +84,7 @@ def test_all_twelve_classes_import_offline_with_provenance(client, office_cache)
     catalog = client.get("/api/sample-datasets").json()["datasets"]
     dataset = next(d for d in catalog if d["id"] == "office-fruit")
     assert dataset["cached"] and len(dataset["classes"]) == 12
-    assert next(cls for cls in dataset["classes"] if cls["id"] == "phone")["name"] == "Điện thoại di động"
+    assert next(cls for cls in dataset["classes"] if cls["id"] == "phone")["name"] == "Smartphone (2020+)"
     keys = [c[0] for c in office.CLASSES]
     job = wait_import(client, {"class_ids": keys, "images_per_class": 20})
     assert job["status"] == "completed", job
@@ -85,6 +105,14 @@ def test_all_twelve_classes_import_offline_with_provenance(client, office_cache)
     with zipfile.ZipFile(io.BytesIO(exported.content)) as archive:
         assert "IMAGE-PROVENANCE.json" in archive.namelist()
         assert "DATASET-LICENSE.txt" in archive.namelist()
+    phone_class = next(cls for cls in result["classes"] if cls["name"] == "Smartphone (2020+)")
+    phone_export = client.get(f"/api/classes/{phone_class['id']}/export")
+    with zipfile.ZipFile(io.BytesIO(phone_export.content)) as archive:
+        assert "creativecommons.org/licenses/by-sa/4.0/" in archive.read("DATASET-LICENSE.txt").decode("utf-8")
+        provenance = json.loads(archive.read("IMAGE-PROVENANCE.json"))
+        phone_sources = next(cls for cls in provenance if cls["id"] == "phone")["images"]
+        assert len(phone_sources) == 20
+        assert all(item["provider"] == "wikimedia-commons" for item in phone_sources)
     client.delete(f"/api/projects/{project_id}")
     client.delete(f"/api/projects/{old['id']}")
 
@@ -154,6 +182,56 @@ def test_source_orientation_applies_after_cropping():
     rotated, _ = office.crop_image(raw.getvalue(), [0, 0, 1, 1], 90)
     assert Image.open(io.BytesIO(unrotated)).size == (120, 80)
     assert Image.open(io.BytesIO(rotated)).size == (80, 120)
+
+
+def test_commons_source_download_is_verified_cached_and_attributed(tmp_path, monkeypatch):
+    buffer = io.BytesIO()
+    Image.fromarray(np.random.default_rng(42).integers(0, 256, (96, 96, 3), dtype=np.uint8)).save(buffer, "PNG")
+    raw = buffer.getvalue()
+    requests = []
+    def download(request, **kwargs):
+        requests.append(request.full_url)
+        return io.BytesIO(raw)
+    monkeypatch.setattr(office.urllib.request, "urlopen", download)
+    item = {"image_id": "b" * 16, "provider": "wikimedia-commons", "bbox": [0, 0, 1, 1],
+            "source_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Phone.jpg/960px-Phone.jpg",
+            "source_sha256": hashlib.sha256(raw).hexdigest(), "Author": "Phone photographer",
+            "License": "https://creativecommons.org/licenses/by-sa/4.0/", "Title": "Modern smartphone",
+            "OriginalLandingURL": "https://commons.wikimedia.org/wiki/File:Phone.jpg"}
+    path, info = office.prepare_one(tmp_path, "phone", item)
+    assert path.is_file() and info["source_sha256"] == item["source_sha256"]
+    office.prepare_one(tmp_path, "phone", item)
+    assert requests == [item["source_url"]]
+    text = office.attribution_text([{"id": "phone", "images": [item]}])
+    assert item["Author"] in text and item["License"] in text and item["OriginalLandingURL"] in text
+    assert "retain the same CC BY-SA" in text
+    changed = {**item, "source_url": item["source_url"].replace("960px", "1280px")}
+    office.prepare_one(tmp_path, "phone", changed)
+    assert len(requests) == 2
+
+
+@pytest.mark.parametrize("url", ["http://upload.wikimedia.org/wikipedia/commons/a.jpg",
+    "https://example.com/a.jpg", "https://upload.wikimedia.org.evil.test/wikipedia/commons/a.jpg",
+    "https://upload.wikimedia.org/other/a.jpg", "https://upload.wikimedia.org/wikipedia/commons/a.jpg?redirect=x"])
+def test_commons_download_rejects_noncanonical_sources(url):
+    with pytest.raises(ValueError, match="source URL"):
+        office.source_url({"provider": "wikimedia-commons", "source_url": url})
+
+
+def test_commons_download_honors_retry_after(tmp_path, monkeypatch):
+    buffer = io.BytesIO()
+    Image.fromarray(np.random.default_rng(8).integers(0, 256, (96, 96, 3), dtype=np.uint8)).save(buffer, "PNG")
+    calls, waits = [], []
+    def download(request, **kwargs):
+        calls.append(request.full_url)
+        if len(calls) == 1:
+            raise office.urllib.error.HTTPError(request.full_url, 429, "Slow down", {"Retry-After": "2"}, None)
+        return io.BytesIO(buffer.getvalue())
+    monkeypatch.setattr(office.urllib.request, "urlopen", download)
+    monkeypatch.setattr(office.time, "sleep", waits.append)
+    path, _ = office.prepare_one(tmp_path, "phone", {"image_id": "c" * 16, "provider": "wikimedia-commons",
+        "bbox": [0, 0, 1, 1], "source_url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Phone.jpg"})
+    assert path.is_file() and len(calls) == 2 and waits == [2]
 
 
 def test_parameter_estimate_accepts_twelve_classes_and_respects_system_limit(client):

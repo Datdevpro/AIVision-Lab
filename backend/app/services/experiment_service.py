@@ -14,6 +14,7 @@ from app.core.errors import AppError, not_found
 from app.ml.checkpoints import make_metadata, resolve_managed_path
 from app.models.db_models import Experiment
 from app.services.dataset_service import delete_experiment_files
+from app.services.model_score import RUBRIC_VERSION, build_model_score
 
 EPOCH_COLUMNS = ["epoch", "total_epochs", "train_loss", "val_loss", "train_accuracy", "val_accuracy", "learning_rate", "elapsed_s"]
 
@@ -57,6 +58,10 @@ def summary_dict(e: Experiment) -> dict[str, Any]:
     best = e.best_checkpoint or {}
     test = (e.evaluation or {}).get("test") or {}
     last = e.epoch_metrics[-1] if e.epoch_metrics else {}
+    score = (e.evaluation or {}).get("model_score")
+    if not score or score.get("rubric_version") != RUBRIC_VERSION:
+        # Older runs already contain the metrics needed for the same scorecard.
+        score = build_model_score(e.class_names, (e.evaluation or {}).get("validation"), best.get("val_loss"))
     return {
         "id": e.id, "project_id": e.project_id, "name": e.name, "mode": e.mode, "architecture": e.architecture,
         "created_at": e.created_at, "seed": e.seed, "duration_s": e.duration_s, "device": e.device,
@@ -64,7 +69,7 @@ def summary_dict(e: Experiment) -> dict[str, Any]:
         "split_fingerprint": e.split_fingerprint, "best_epoch": best.get("epoch"),
         "best_val_accuracy": best.get("val_accuracy"), "best_val_loss": best.get("val_loss"),
         "final_train_accuracy": last.get("train_accuracy"), "test_accuracy": test.get("accuracy"),
-        "num_epochs": len(e.epoch_metrics), "param_counts": e.param_counts,
+        "num_epochs": len(e.epoch_metrics), "param_counts": e.param_counts, "model_score": score,
     }
 
 

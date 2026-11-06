@@ -1,7 +1,9 @@
-Office & Fruit — Vision Lab curated subset of Open Images
+Office & Fruit — Vision Lab curated photographs from Open Images and Wikimedia Commons
 https://storage.googleapis.com/openimages/web/download_v7.html
-Images: CC BY 2.0 https://creativecommons.org/licenses/by/2.0/
-Annotations: Google LLC, CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Wikimedia Commons: https://commons.wikimedia.org/
+Images: each photograph retains the author and license URL listed below (CC BY, CC BY-SA or CC0).
+Open Images annotations: Google LLC, CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Wikimedia crops: manually reviewed; modifications to CC BY-SA photos retain the same CC BY-SA license as the original.
 Changes: object bounding-box crop with 4% context; source orientation correction; RGB conversion; resize <=512px; JPEG re-encoding.
 One crop per original photo; class labels translated to Vietnamese. No synthetic augmentation in this dataset.
 
@@ -16,4 +18,4 @@ apple/533563a9ff6cf2e6.jpg | Natesh Ramasamy | Food For God(Thought?)!!! | https
 watermelon/5ee1459e77fb677a.jpg | ニャホ | カラスウリ | https://www.flickr.com/photos/47919766@N08/15373802596 | https://creativecommons.org/licenses/by/2.0/
 orange/3c22df7047a1dc35.jpg | sonictk | Wheel Of Treats | https://www.flickr.com/photos/sonictk/397397451/ | https://creativecommons.org/licenses/by/2.0/
 pear/51a4941f30288a46.jpg | Apple and Pear Australia Ltd | ANP-0118 pear (to be marekted under the name Lanya®)_MG_4993 | https://www.flickr.com/photos/applesnpearsau/16427992986 | https://creativecommons.org/licenses/by/2.0/
-phone/2b04a8212caefafe.jpg | India7 Network | Samsung Galaxy Y Duos S6102 | https://www.flickr.com/photos/india_7/12799969194 | https://creativecommons.org/licenses/by/2.0/
+phone/d3e4d1bb0057f5e8.jpg | メイド理世 | IPhone 16 Pro (54252352825) | https://commons.wikimedia.org/wiki/File:IPhone_16_Pro_(54252352825).jpg | https://creativecommons.org/licenses/by-sa/2.0

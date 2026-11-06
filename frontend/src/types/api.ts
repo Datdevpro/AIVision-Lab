@@ -238,6 +238,15 @@ export interface ExperimentEvaluation {
   feature_cache?: boolean
 }
 
+export interface ModelScoreSnapshot {
+  rubric_version: string
+  total: number | null
+  qualities: Record<'accuracy' | 'macro' | 'weakest' | 'loss', number | null>
+  loss: number | null
+  baseline_loss: number | null
+  weakest_class: { label: string; recall: number; support: number } | null
+}
+
 export interface Experiment {
   id: string
   project_id: string
@@ -258,6 +267,7 @@ export interface Experiment {
   final_train_accuracy: number | null
   test_accuracy: number | null
   num_epochs: number
+  model_score?: ModelScoreSnapshot
   param_counts: Record<string, number>
   dataset_summary?: DatasetSummary
   epoch_metrics?: EpochMetrics[]

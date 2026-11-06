@@ -5,6 +5,7 @@ import { useLabStore } from '@/store/useLabStore'
 import { formatNumber, formatPercent } from '@/lib/utils'
 import type { Experiment } from '@/types/api'
 import { ModelEvaluationView } from '@/features/analytics/ModelEvaluationView'
+import { ModelScoreView } from '@/features/analytics/ModelScoreView'
 
 const dateLabel = (value: string) => {
   // Backend stores UTC timestamps without an offset in SQLite.
@@ -30,7 +31,7 @@ const HistoryReport: React.FC<{ id: string }> = ({ id }) => {
   if (!experiment) return <p role="status" className="p-4 text-sm">Đang tải kết quả huấn luyện…</p>
 
   return <article aria-label={`Kết quả ${experiment.name}`} className="min-w-0 p-3">
-    <h3 className="font-bold text-sm">{experiment.name}</h3>
+    <ModelScoreView experiment={experiment} compact />
     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs">
       <span>Random seed: <strong className="font-mono">{experiment.seed}</strong></span>
       <span>{dateLabel(experiment.created_at)}</span>
@@ -48,6 +49,10 @@ const HistoryReport: React.FC<{ id: string }> = ({ id }) => {
         <span>{experiment.class_names.length} lớp · Train: {experiment.dataset_summary?.split.train ?? '—'} · Validation: {experiment.dataset_summary?.split.val ?? '—'}</span>
         <span className="break-all">Mã dữ liệu: {experiment.dataset_fingerprint} · Mã chia tập: {experiment.split_fingerprint}</span>
       </div>
+    </details>
+    <details className="text-xs mt-3">
+      <summary className="cursor-pointer font-semibold">Chi tiết điểm đánh giá (35% Accuracy · 20% F1 Macro · 20% Recall thấp nhất · 25% Loss)</summary>
+      <ModelScoreView experiment={experiment} />
     </details>
     <div className="flex gap-2 mt-4" role="group" aria-label="Tập đánh giá lịch sử">
       {(['validation', 'test'] as const).filter(value => value === 'validation' || experiment.evaluation?.test).map(value =>
@@ -106,6 +111,9 @@ const ProjectHistory: React.FC<{ projectId: string | null }> = ({ projectId }) =
               <div className="opacity-70">{dateLabel(item.created_at)}</div>
               <div className="font-mono">Seed: {item.seed} · {item.num_epochs} epoch</div>
               <div>Val accuracy: <strong>{formatPercent(item.best_val_accuracy)}</strong></div>
+              <div className={`pt-1 font-semibold ${light ? 'text-sky-800' : 'text-cyan-300'}`}>
+                Điểm mô hình: <strong className="font-mono">{item.model_score?.total == null ? 'Chưa đủ dữ liệu' : `${formatNumber(item.model_score.total, 2)} / 100`}</strong>
+              </div>
             </button>)}
           </nav>
           <div className="min-w-0">{selectedId && <HistoryReport key={selectedId} id={selectedId} />}</div>
