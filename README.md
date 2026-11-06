@@ -61,7 +61,15 @@ Trong **Dataset Studio → Thư viện dataset mẫu → Office & Fruit**, giữ
 
 Ở lệnh thứ hai, thay `cpu` bằng build đang cài (`cu118`, `cu124`, `cu128`…) nếu dùng CUDA. Cache nằm tại `backend/data/sample_datasets/office-fruit` (hoặc trong `VISIONLAB_DATA_DIR` tương ứng). Có thể sao chép nguyên thư mục cache sang máy học sinh để không cần mạng. Gói `office-fruit-v1.zip` được tạo khi biên soạn bộ dữ liệu, gồm ảnh theo lớp, manifest, checksum và thông tin tác giả; giải nén vào cùng thư mục cache, giữ cả các file `.json` và `.ready.json`. Không cần sao chép database để dùng thư viện trên máy khác.
 
-Manifest được lưu trong `backend/app/data/office-fruit-v1.json`; ảnh và cache lớn không đưa vào source. Nguồn từng ảnh, bounding box, SHA-256, tác giả và giấy phép được giữ trong manifest và dự án; xuất lớp ảnh cũng kèm provenance. Ảnh Open Images dùng **CC BY 2.0**, annotation Open Images **CC BY 4.0**. Ảnh smartphone Wikimedia Commons giữ giấy phép từng ảnh (**CC BY, CC BY-SA hoặc CC0**); ảnh CC BY-SA đã chỉnh sửa giữ cùng giấy phép của ảnh gốc. Xem [Open Images](https://storage.googleapis.com/openimages/web/factsfigures_v7.html), [Wikimedia Commons](https://commons.wikimedia.org/) và file `DATASET-LICENSE.txt` khi xuất dữ liệu.
+Gói [office-fruit-v1.zip](backend/data/sample_datasets/office-fruit/office-fruit-v1.zip) (~81 MB) được lưu cùng repo, nên có sẵn sau khi clone hoặc pull. Trên máy mới đã cài ứng dụng, giải nén bằng PowerShell từ thư mục gốc dự án để dùng thư viện mà không tải lại từng ảnh:
+
+```powershell
+Expand-Archive -LiteralPath .\backend\data\sample_datasets\office-fruit\office-fruit-v1.zip -DestinationPath .\backend\data\sample_datasets\office-fruit -Force
+```
+
+Sau đó mở **Thư viện dataset mẫu → Office & Fruit** để nhập vào dự án. Với `VISIONLAB_DATA_DIR` riêng, giải nén vào `sample_datasets/office-fruit` bên trong thư mục dữ liệu đó. ZIP đi cùng manifest của cùng phiên bản source; khi cập nhật ZIP, giải nén lại trước khi dùng. Không giải nén lồng thêm một thư mục `office-fruit`.
+
+Manifest được lưu trong `backend/app/data/office-fruit-v1.json`; ảnh và cache đã giải nén không đưa vào Git, chỉ gói ZIP offline được lưu cùng repo. Nguồn từng ảnh, bounding box, SHA-256, tác giả và giấy phép được giữ trong manifest và dự án; xuất lớp ảnh cũng kèm provenance. Ảnh Open Images dùng **CC BY 2.0**, annotation Open Images **CC BY 4.0**. Ảnh smartphone Wikimedia Commons giữ giấy phép từng ảnh (**CC BY, CC BY-SA hoặc CC0**); ảnh CC BY-SA đã chỉnh sửa giữ cùng giấy phép của ảnh gốc. Xem [Open Images](https://storage.googleapis.com/openimages/web/factsfigures_v7.html), [Wikimedia Commons](https://commons.wikimedia.org/) và file `DATASET-LICENSE.txt` khi xuất dữ liệu.
 
 Dành cho người bảo trì muốn biên soạn lại: chạy `backend/scripts/build_office_fruit.py` để lấy hai bảng annotation/metadata chính thức (~2,9 GB, lưu trong `.cache/dataset-build`), sau đó chạy lại với `--curate`. Học sinh không cần chạy bước này.
 
@@ -236,7 +244,7 @@ Các tỷ lệ dùng thang 0–1; `K` là số lớp. Loss là cross-entropy tru
 
 ## Chạy trên một cổng
 
-Khi cập nhật các bản clone cũ, nên sao lưu `backend/data` trước khi pull nếu còn dữ liệu cần giữ: các file dự án cục bộ từng được đưa vào Git nay được gỡ khỏi phần theo dõi. Repo chỉ chứa mã nguồn, manifest và ảnh xem trước; ảnh thực hành và lịch sử SQLite lưu riêng trên từng máy.
+Khi cập nhật các bản clone cũ, nên sao lưu `backend/data` trước khi pull nếu còn dữ liệu cần giữ: các file dự án cục bộ từng được đưa vào Git nay được gỡ khỏi phần theo dõi. Repo chứa mã nguồn, manifest, ảnh xem trước và gói dataset offline; ảnh thực hành và lịch sử SQLite lưu riêng trên từng máy.
 
 FastAPI có thể phục vụ cả API và frontend đã build, phù hợp để chạy bản cục bộ không cần Vite dev server.
 

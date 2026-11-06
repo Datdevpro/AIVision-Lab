@@ -35,7 +35,10 @@ backend/data/checkpoints/*
 !backend/data/checkpoints/.gitkeep
 backend/data/exports/*
 !backend/data/exports/.gitkeep
-backend/data/sample_datasets/
+backend/data/sample_datasets/*
+!backend/data/sample_datasets/office-fruit/
+backend/data/sample_datasets/office-fruit/*
+!backend/data/sample_datasets/office-fruit/office-fruit-v1.zip
 
 # Node / Frontend
 frontend/node_modules/
