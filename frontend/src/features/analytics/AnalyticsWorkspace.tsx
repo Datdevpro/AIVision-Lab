@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   BookOpen,
+  Award,
   ChevronDown,
   ChevronUp,
   GitCompare,
@@ -14,12 +15,21 @@ import { ExperimentComparisonView } from './ExperimentComparisonView'
 import { LearningInsightsView } from './LearningInsightsView'
 import { MiniLessonsView } from './MiniLessonsView'
 import { ModelEvaluationView } from './ModelEvaluationView'
+import { ModelScoreView } from './ModelScoreView'
 import { NetworkVisualizer } from '../neural-visualizer/NetworkVisualizer'
 import { TrainingHistory } from '../training/TrainingHistory'
 
 export const AnalyticsWorkspace: React.FC = () => {
-  const { activeBottomTab, setActiveBottomTab, theme, activeJob } = useLabStore()
+  const { activeBottomTab, setActiveBottomTab, theme, activeJob, activeExperiment } = useLabStore()
   const [collapseState, setCollapseState] = useState({ jobId: null as string | null, collapsed: true })
+  const shownJob = useRef<string | null>(null)
+  useEffect(() => {
+    if (activeJob?.status === 'completed' && activeJob.experiment_id === activeExperiment?.id && shownJob.current !== activeJob.id) {
+      shownJob.current = activeJob.id
+      setActiveBottomTab('score')
+      setCollapseState({ jobId: activeJob.id, collapsed: false })
+    }
+  }, [activeJob?.id, activeJob?.status, activeJob?.experiment_id, activeExperiment?.id, setActiveBottomTab])
   // Open a new training session once; users can still collapse it afterwards.
   const isCollapsed = activeJob && collapseState.jobId !== activeJob.id ? false : collapseState.collapsed
   const setIsCollapsed = (collapsed: boolean) => setCollapseState({ jobId: activeJob?.id ?? null, collapsed })
@@ -27,6 +37,7 @@ export const AnalyticsWorkspace: React.FC = () => {
   const tabs: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
     { id: 'architecture', label: 'Mạng Nơ-ron & Biểu đồ', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'evaluation', label: 'Đánh giá & Confusion Matrix', icon: <Target className="w-3.5 h-3.5" /> },
+    { id: 'score', label: 'Đánh giá mô hình', icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'history', label: 'Lịch sử training', icon: <History className="w-3.5 h-3.5" /> },
     { id: 'experiments', label: 'So sánh Thử nghiệm', icon: <GitCompare className="w-3.5 h-3.5" /> },
     { id: 'insights', label: 'Nhận định Sư phạm AI', icon: <Lightbulb className="w-3.5 h-3.5" /> },
@@ -55,7 +66,7 @@ export const AnalyticsWorkspace: React.FC = () => {
                   setActiveBottomTab(tab.id)
                   setIsCollapsed(false)
                 }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`flex shrink-0 items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   active && !isCollapsed
                     ? theme === 'light'
                       ? 'bg-sky-50 border border-sky-300 text-sky-700 shadow-sm font-bold'
@@ -90,6 +101,7 @@ export const AnalyticsWorkspace: React.FC = () => {
         <div className="flex-1 min-h-0 overflow-y-auto p-2">
           {activeBottomTab === 'architecture' && <NetworkVisualizer key={activeJob?.id ?? 'draft'} />}
           {activeBottomTab === 'evaluation' && <ModelEvaluationView />}
+          {activeBottomTab === 'score' && <ModelScoreView />}
           {activeBottomTab === 'history' && <TrainingHistory />}
           {activeBottomTab === 'experiments' && <ExperimentComparisonView />}
           {activeBottomTab === 'insights' && <LearningInsightsView />}

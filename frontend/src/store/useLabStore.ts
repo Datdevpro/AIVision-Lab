@@ -17,7 +17,7 @@ import type {
   TrainingJob,
 } from '@/types/api'
 
-export type BottomTab = 'architecture' | 'evaluation' | 'history' | 'experiments' | 'insights' | 'lessons'
+export type BottomTab = 'architecture' | 'evaluation' | 'score' | 'history' | 'experiments' | 'insights' | 'lessons'
 export type NetworkSource = 'auto' | 'draft' | 'job' | 'experiment'
 
 interface LabState {

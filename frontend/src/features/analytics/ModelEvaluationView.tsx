@@ -42,6 +42,7 @@ export const ModelEvaluationView: React.FC<{ experiment?: Experiment; split?: 'v
     warnings,
     num_samples,
   } = evaluation
+  const correctPredictions = confusion_matrix.reduce((total, row, index) => total + (row[index] ?? 0), 0)
 
   return (
     <div className="space-y-4 p-2 text-xs">
@@ -79,7 +80,7 @@ export const ModelEvaluationView: React.FC<{ experiment?: Experiment; split?: 'v
         <div className={`p-3 rounded-xl border font-mono shadow-sm ${
           theme === 'light' ? 'bg-sky-50 border-sky-300' : 'bg-cyan-500/10 border-cyan-500/30'
         }`}>
-          <div className={`text-[10px] ${theme === 'light' ? 'text-slate-600 font-semibold' : 'text-slate-400'}`}>Độ chính xác (Accuracy)</div>
+          <div className={`text-[10px] ${theme === 'light' ? 'text-slate-600 font-semibold' : 'text-slate-400'}`}>Độ chính xác tổng thể (Overall Accuracy)</div>
           <div className={`text-xl font-bold mt-0.5 ${theme === 'light' ? 'text-sky-800' : 'text-cyan-300'}`}>
             {formatPercent(accuracy)}
           </div>
@@ -136,6 +137,20 @@ export const ModelEvaluationView: React.FC<{ experiment?: Experiment; split?: 'v
             </button>
           </div>
           <ConfusionMatrixChart matrix={confusion_matrix} labels={labels} />
+          <div className={`mt-3 rounded-lg p-3 space-y-1 ${
+            theme === 'light' ? 'bg-sky-50 text-slate-700' : 'bg-cyan-500/10 text-slate-300'
+          }`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">Overall Accuracy</span>
+              <span className={`font-mono font-bold ${theme === 'light' ? 'text-sky-800' : 'text-cyan-300'}`}>
+                {formatPercent(accuracy)}
+              </span>
+            </div>
+            <p className="text-[10px]">
+              Dự đoán đúng {correctPredictions}/{num_samples} mẫu {split === 'test' ? 'test' : 'validation'}.
+              {' '}Tính bằng tổng đường chéo chính chia tổng số mẫu trong ma trận.
+            </p>
+          </div>
         </div>
 
         {/* Per-class Metrics Table (7 cols) */}

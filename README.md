@@ -217,6 +217,19 @@ Frontend phụ trách giao diện và hiển thị kết quả. Training và inf
 
 Augmentation được tạo khi lấy ảnh train: lật ngang ngẫu nhiên, xoay nhẹ và thay đổi màu. Các biến thể không được lưu thành ảnh mới và không áp dụng cho validation/test.
 
+## Bảng đánh giá mô hình
+
+Tab **Đánh giá mô hình**, cạnh **Đánh giá & Confusion Matrix**, tự mở khi huấn luyện thành công và tải xong báo cáo. Bảng dùng cùng checkpoint tốt nhất và cùng tập validation cho bốn tiêu chí:
+
+| Tiêu chí | Trọng số | Điểm đóng góp |
+| --- | --- | --- |
+| Overall Accuracy | 35% | `35 × accuracy` |
+| F1 Macro | 20% | `20 × f1_macro` |
+| Khả năng nhận diện lớp yếu nhất (Recall thấp nhất) | 20% | `20 × min(Recall từng lớp)` |
+| Overall Loss | 25% | `25 × max(0, 1 − validation_loss / ln(K))` |
+
+Các tỷ lệ dùng thang 0–1; `K` là số lớp. Loss là cross-entropy trung bình trên validation ở checkpoint tốt nhất, không phải train loss, loss thấp nhất của mọi epoch hay loss epoch cuối. `ln(K)` là loss của dự đoán gán xác suất đều cho mọi lớp: loss bằng 0 được 25 điểm, loss từ `ln(K)` trở lên được 0 điểm. Đây là quy ước chấm thực hành, không phải chuẩn chất lượng hay chỉ số hội tụ. Nếu thiếu số liệu hoặc có lớp không có ảnh validation, không hiển thị tổng điểm; không tự phân bổ lại trọng số. Validation đã dùng để chọn checkpoint, nên điểm không thay thế đánh giá trên bộ test độc lập.
+
 ## Chạy trên một cổng
 
 FastAPI có thể phục vụ cả API và frontend đã build, phù hợp để chạy bản cục bộ không cần Vite dev server.
